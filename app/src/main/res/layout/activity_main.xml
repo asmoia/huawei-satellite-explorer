@@ -4,27 +4,29 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/background">
+    android:background="#070A12">
 
-    <!-- Top App Bar -->
+    <!-- Top App Bar (MeeTime EMUI Dark Header) -->
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/topAppBar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/primary"
-        app:title="کاوشگر ماهواره هواوی (Pura 70)"
-        app:titleTextColor="@color/on_primary" />
+        android:background="#0D1322"
+        app:title="Satellite Communication"
+        app:titleTextColor="#FFFFFF"
+        app:subtitle="MeeTime BeiDou Engine • Pura 70"
+        app:subtitleTextColor="#00E5FF" />
 
-    <!-- Tabs -->
+    <!-- Tabs in English -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/surface"
-        app:tabIndicatorColor="@color/primary"
-        app:tabSelectedTextColor="@color/primary"
-        app:tabTextColor="@color/text_secondary"
-        app:tabMode="scrollable" />
+        android:background="#0D1322"
+        app:tabIndicatorColor="#00E5FF"
+        app:tabSelectedTextColor="#00E5FF"
+        app:tabTextColor="#8A9BB0"
+        app:tabMode="fixed" />
 
     <!-- Container for dynamic tabs content -->
     <FrameLayout
@@ -34,94 +36,113 @@
         android:layout_weight="1"
         android:padding="8dp">
 
-        <!-- Tab 0: Sky Radar & 3D Calibration View -->
+        <!-- Tab 0: 1:1 MeeTime Satellite Alignment & Calibration View -->
         <ScrollView
-            android:id="@+id/viewRadar"
+            android:id="@+id/viewAlign"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
 
-                <!-- Alignment Status Banner Card -->
+                <!-- Dynamic MeeTime Instruction Header Card -->
                 <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardRadarStatus"
+                    android:id="@+id/cardMeeTimeStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="3dp"
-                    app:cardBackgroundColor="#1A237E">
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="#10192D"
+                    app:strokeColor="#1E2F52"
+                    app:strokeWidth="1dp">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="12dp">
+                        android:padding="14dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:id="@+id/tvSignalIcon"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="🛰️"
+                                android:textSize="18sp"
+                                android:layout_marginEnd="8dp" />
+
+                            <TextView
+                                android:id="@+id/tvMeeTimeTitle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Search for Satellite"
+                                android:textColor="#FFFFFF"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvLockBadge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="SEARCHING"
+                                android:textColor="#FFB300"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:background="#22FFB300"
+                                android:paddingHorizontal="8dp"
+                                android:paddingVertical="3dp" />
+                        </LinearLayout>
+
                         <TextView
-                            android:id="@+id/tvRadarStatus"
+                            android:id="@+id/tvMeeTimeInstruction"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="🛰️ در حال جستجو و کالیبراسیون با ماهواره بیدو..."
-                            android:textColor="#FFFFFF"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
-                        <TextView
-                            android:id="@+id/tvRadarGuide"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="گوشی را به سمت جنوب (آزیموت ~۱۷۰°) گرفته و ۴۵ الی ۵۰ درجه رو به آسمان ببرید."
-                            android:textColor="#B0BEC5"
-                            android:textSize="12sp"
-                            android:layout_marginTop="4dp" />
+                            android:text="Turn body towards South (~170°) and tilt phone up towards the sky."
+                            android:textColor="#A0B2C6"
+                            android:textSize="13sp"
+                            android:layout_marginTop="6dp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Custom Sky Radar Canvas -->
-                <com.huawei.satellite.explorer.view.SkyRadarView
-                    android:id="@+id/skyRadarView"
+                <!-- 1:1 MeeTime Celestial Alignment Radar Canvas -->
+                <com.huawei.satellite.explorer.view.MeeTimeSatelliteRadarView
+                    android:id="@+id/meeTimeRadarView"
                     android:layout_width="match_parent"
                     android:layout_height="320dp"
                     android:layout_gravity="center_horizontal" />
 
-                <!-- Telemetry & Sensor Info Card -->
+                <!-- Telemetry & Constellation Metrics Card -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:layout_marginBottom="8dp"
-                    app:cardCornerRadius="10dp"
-                    app:cardElevation="2dp">
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="#10192D"
+                    app:strokeColor="#1E2F52"
+                    app:strokeWidth="1dp">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="12dp">
+                        android:padding="14dp">
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="تله‌متری سنسورها و مدار بیدو"
+                            android:text="BeiDou RDSS Telemetry"
                             android:textStyle="bold"
-                            android:textColor="@color/primary"
-                            android:textSize="14sp" />
-
-                        <TextView
-                            android:id="@+id/tvGeoTargetInfo"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="هدف ثابت: BeiDou GEO-5 (۵۸.۷۵°E) | آزیموت: ۱۶۹.۹° | شیب: ۴۷.۸°"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_primary"
-                            android:layout_marginTop="6dp" />
-
-                        <TextView
-                            android:id="@+id/tvOrientationInfo"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="جهت فعلی گوشی: آزیموت ۰° | زاویه ارتفاع ۰° | فاصله تا تراز: ---"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginTop="4dp" />
+                            android:textColor="#00E5FF"
+                            android:textSize="13sp" />
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -129,167 +150,69 @@
                             android:orientation="horizontal"
                             android:layout_marginTop="8dp">
                             <TextView
-                                android:id="@+id/tvBdsCount"
+                                android:id="@+id/tvTargetSatDetails"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="ماهواره بیدو فعال: ۰"
-                                android:textSize="12sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/secondary" />
+                                android:text="Target: BDS GEO-5 (58.75°E)\nAz: 169.9° • El: 47.8°"
+                                android:textColor="#E0E6ED"
+                                android:textSize="12sp" />
                             <TextView
-                                android:id="@+id/tvMaxSnr"
+                                android:id="@+id/tvPhoneAttitude"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="حداکثر سیگنال: ۰ dB"
+                                android:text="Phone Heading: 0°\nPitch Angle: 0°"
+                                android:textColor="#A0B2C6"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#1E2F52"
+                            android:layout_marginVertical="8dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+                            <TextView
+                                android:id="@+id/tvTrackedBdsCount"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Active BDS Satellites: 0"
+                                android:textColor="#00E676"
                                 android:textSize="12sp"
-                                android:textStyle="bold"
-                                android:textColor="#2E7D32" />
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tvPeakSignal"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Peak C/N0: 0.0 dB-Hz"
+                                android:textColor="#FFD700"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-            </LinearLayout>
-        </ScrollView>
 
-        <!-- Tab 1: Diagnostic View -->
-        <ScrollView
-            android:id="@+id/viewDiagnostic"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
+                <!-- Quick Action to Message Tab -->
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnRunDiagnostic"
+                    android:id="@+id/btnQuickGoToSend"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/btn_run_diagnostic"
-                    app:icon="@android:drawable/ic_menu_search"
-                    android:layout_marginBottom="12dp" />
-
-                <LinearLayout
-                    android:id="@+id/containerDiagnosticResults"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
+                    android:text="Send Satellite Message (MeeTime Format)"
+                    android:backgroundTint="#00C853"
+                    android:textColor="#FFFFFF"
+                    app:cornerRadius="10dp"
+                    android:layout_marginBottom="8dp" />
             </LinearLayout>
         </ScrollView>
 
-        <!-- Tab 2: Service View -->
-        <ScrollView
-            android:id="@+id/viewService"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    app:cardCornerRadius="10dp"
-                    app:cardElevation="2dp">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="12dp">
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="کنترل اتصال به SmcService"
-                            android:textStyle="bold"
-                            android:textColor="@color/primary"
-                            android:textSize="16sp" />
-
-                        <EditText
-                            android:id="@+id/etTargetPackage"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="com.huawei.lbs"
-                            android:hint="نام پکیج میزبان سرویس (پیش‌فرض com.huawei.lbs)"
-                            android:textSize="14sp"
-                            android:layout_marginTop="8dp" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginTop="8dp">
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btnBindService"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="اتصال به سرویس"
-                                android:layout_marginEnd="4dp" />
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btnUnbindService"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                                android:text="قطع اتصال"
-                                android:layout_marginStart="4dp" />
-                        </LinearLayout>
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Actions card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    app:cardCornerRadius="10dp"
-                    app:cardElevation="2dp">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="12dp">
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="عملیات و استعلام ماهواره"
-                            android:textStyle="bold"
-                            android:textColor="@color/primary"
-                            android:textSize="16sp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnQueryCapabilities"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/btn_query_cap"
-                            android:layout_marginTop="8dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnStartSatellite"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/btn_start_satellite"
-                            android:backgroundTint="@color/secondary"
-                            android:layout_marginTop="4dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnStopSatellite"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:text="@string/btn_stop_satellite"
-                            android:layout_marginTop="4dp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-            </LinearLayout>
-        </ScrollView>
-
-        <!-- Tab 3: Transmitter View -->
+        <!-- Tab 1: Transmitter / MeeTime SMS View -->
         <ScrollView
             android:id="@+id/viewTransmitter"
             android:layout_width="match_parent"
@@ -304,28 +227,31 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
-                    app:cardCornerRadius="10dp"
-                    app:cardElevation="2dp">
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="#10192D"
+                    app:strokeColor="#1E2F52"
+                    app:strokeWidth="1dp">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="12dp">
+                        android:padding="14dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="تنظیم پیام ماهواره‌ای"
+                            android:text="Compose Satellite Message"
                             android:textStyle="bold"
-                            android:textColor="@color/primary"
-                            android:textSize="16sp" />
+                            android:textColor="#00E5FF"
+                            android:textSize="15sp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/msg_mode_label"
+                            android:text="Message Send Mode:"
                             android:textSize="12sp"
-                            android:textColor="@color/text_secondary"
+                            android:textColor="#A0B2C6"
                             android:layout_marginTop="8dp" />
 
                         <Spinner
@@ -337,9 +263,9 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/template_label"
+                            android:text="Emergency Preset Phrase:"
                             android:textSize="12sp"
-                            android:textColor="@color/text_secondary"
+                            android:textColor="#A0B2C6"
                             android:layout_marginTop="8dp" />
 
                         <Spinner
@@ -351,24 +277,30 @@
                         <com.google.android.material.textfield.TextInputLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp">
+                            android:layout_marginTop="8dp"
+                            app:hintTextColor="#00E5FF"
+                            android:textColorHint="#8A9BB0">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/etCustomText"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:hint="@string/custom_text_hint"
+                                android:hint="Message content (max 20 characters)"
+                                android:textColor="#FFFFFF"
                                 android:maxLength="20" />
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <com.google.android.material.textfield.TextInputLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp">
+                            android:layout_marginTop="8dp"
+                            app:hintTextColor="#00E5FF"
+                            android:textColorHint="#8A9BB0">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/etRecipient"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:hint="@string/recipient_hint"
+                                android:hint="Recipient Phone Number (+98...)"
+                                android:textColor="#FFFFFF"
                                 android:inputType="phone" />
                         </com.google.android.material.textfield.TextInputLayout>
 
@@ -384,30 +316,34 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:text="GPS: 35.6892, 51.3890"
+                                android:textColor="#A0B2C6"
                                 android:textSize="12sp" />
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/btnFetchGps"
                                 style="@style/Widget.MaterialComponents.Button.TextButton"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="@string/fetch_gps" />
+                                android:text="Refresh GPS"
+                                android:textColor="#00E5FF" />
                         </LinearLayout>
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnSendSatellite"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="@string/btn_send_satellite"
-                            android:backgroundTint="@color/status_red"
+                            android:text="Send via BeiDou Satellite"
+                            android:backgroundTint="#D32F2F"
+                            android:textColor="#FFFFFF"
+                            app:cornerRadius="10dp"
                             android:layout_marginTop="16dp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
         </ScrollView>
 
-        <!-- Tab 4: Launcher & ADB -->
+        <!-- Tab 2: RSMC Service Bridge -->
         <ScrollView
-            android:id="@+id/viewLauncher"
+            android:id="@+id/viewService"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="gone">
@@ -420,91 +356,143 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
-                    app:cardCornerRadius="10dp"
-                    app:cardElevation="2dp">
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="#10192D"
+                    app:strokeColor="#1E2F52"
+                    app:strokeWidth="1dp">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="12dp">
+                        android:padding="14dp">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="اجرای مستقیم صفحات مخفی ماهواره در MeeTime"
+                            android:text="SmcService Binder Control"
                             android:textStyle="bold"
-                            android:textColor="@color/primary"
-                            android:textSize="16sp" />
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="این دکمه‌ها اینتنت‌های مستقیم به بخش‌های ماهواره‌ای میتایم ارسال می‌کنند:"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginTop="4dp" />
+                            android:textColor="#00E5FF"
+                            android:textSize="15sp" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnLaunchChat"
+                        <EditText
+                            android:id="@+id/etTargetPackage"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="صفحه چت ماهواره‌ای (SmcMessageChatActivity)"
+                            android:text="com.huawei.lbs"
+                            android:textColor="#FFFFFF"
+                            android:hint="Target Package (default com.huawei.lbs)"
+                            android:textSize="14sp"
                             android:layout_marginTop="8dp" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnLaunchSearchSate"
+                        <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="صفحه رادار و جستجوی ماهواره (Search Satellite)"
-                            android:layout_marginTop="4dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnLaunchQuickHelp"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="صفحه پیام‌های اضطراری (Quick Help)"
-                            android:layout_marginTop="4dp" />
+                            android:orientation="horizontal"
+                            android:layout_marginTop="8dp">
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnBindService"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Bind Service"
+                                android:layout_marginEnd="4dp" />
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnUnbindService"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:textColor="#FFFFFF"
+                                android:text="Unbind"
+                                android:layout_marginStart="4dp" />
+                        </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- ADB Tweaks -->
+                <!-- Actions card -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
-                    app:cardCornerRadius="10dp"
-                    app:cardElevation="2dp">
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="#10192D"
+                    app:strokeColor="#1E2F52"
+                    app:strokeWidth="1dp">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="12dp">
+                        android:padding="14dp">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="دستورات ADB برای فعال‌سازی اجباری فلگ ماهواره"
+                            android:text="Satellite Operations"
                             android:textStyle="bold"
-                            android:textColor="@color/primary"
-                            android:textSize="16sp" />
-                        <TextView
-                            android:id="@+id/tvAdbCommands"
+                            android:textColor="#00E5FF"
+                            android:textSize="15sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnQueryCapabilities"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:textIsSelectable="true"
-                            android:fontFamily="monospace"
-                            android:background="#E0E0E0"
-                            android:padding="8dp"
-                            android:textSize="11sp"
+                            android:text="Query Capabilities"
                             android:layout_marginTop="8dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnStartSatellite"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Start Satellite Service (startSmcService)"
+                            android:backgroundTint="#00C853"
+                            android:textColor="#FFFFFF"
+                            android:layout_marginTop="4dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnStopSatellite"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:textColor="#FFFFFF"
+                            android:text="Stop Satellite Service"
+                            android:layout_marginTop="4dp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
         </ScrollView>
+
+        <!-- Tab 3: Hardware Audit View -->
+        <ScrollView
+            android:id="@+id/viewDiagnostic"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRunDiagnostic"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Re-scan Hardware &amp; Baseband"
+                    android:layout_marginBottom="12dp" />
+
+                <LinearLayout
+                    android:id="@+id/containerDiagnosticResults"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+        </ScrollView>
     </FrameLayout>
 
-    <!-- Bottom Log Monitor Console -->
+    <!-- Bottom Log Monitor Console (MeeTime Dark Console) -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="130dp"
-        android:background="@color/log_bg"
+        android:layout_height="120dp"
+        android:background="#05080E"
         android:orientation="vertical"
         android:padding="6dp">
 
@@ -517,16 +505,16 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="کنسول زنده ماهواره هواوی"
-                android:textColor="#FFFFFF"
+                android:text="Telemetry &amp; Binder Console"
+                android:textColor="#00E5FF"
                 android:textStyle="bold"
                 android:textSize="11sp" />
             <TextView
                 android:id="@+id/btnClearLog"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="پاک کردن"
-                android:textColor="#90CAF9"
+                android:text="CLEAR"
+                android:textColor="#64B5F6"
                 android:textSize="11sp"
                 android:padding="4dp" />
         </LinearLayout>
@@ -535,15 +523,15 @@
             android:id="@+id/scrollLog"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_marginTop="4dp">
+            android:layout_marginTop="2dp">
             <TextView
                 android:id="@+id/tvLogOutput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:fontFamily="monospace"
-                android:textColor="@color/log_text"
+                android:textColor="#80D8FF"
                 android:textSize="11sp"
-                android:text="برنامه آماده به کار است. یک عملیات انتخاب کنید...\n" />
+                android:text="Satellite Engine initialized. Ready.\n" />
         </ScrollView>
     </LinearLayout>
 

@@ -33,34 +33,34 @@ public class RsmcServiceBridge {
     private final IHwSmcCallBack.Stub mCallback = new IHwSmcCallBack.Stub() {
         @Override
         public void notifyServiceStatus(Bundle bundle) throws RemoteException {
-            log("📡 notifyServiceStatus: " + bundleToString(bundle));
+            log("[Callback] notifyServiceStatus: " + bundleToString(bundle));
         }
 
         @Override
         public void notifySysStatus(Bundle bundle) throws RemoteException {
-            log("📡 notifySysStatus: " + bundleToString(bundle));
+            log("[Callback] notifySysStatus: " + bundleToString(bundle));
         }
 
         @Override
         public void notifyCaliInfo(Bundle bundle) throws RemoteException {
-            log("🧭 notifyCaliInfo (سنسور/کالیبراسیون): " + bundleToString(bundle));
+            log("[Callback] notifyCaliInfo (Compass/Sensor): " + bundleToString(bundle));
         }
 
         @Override
         public void notifySateInfo(Bundle bundle) throws RemoteException {
-            log("🛰️ notifySateInfo (اطلاعات سیگنال ماهواره): " + bundleToString(bundle));
+            log("[Callback] notifySateInfo (Satellite Signals): " + bundleToString(bundle));
             if (listener != null) listener.onSatelliteInfo(bundle);
         }
 
         @Override
         public void notifySendStatus(Bundle bundle) throws RemoteException {
-            log("📤 notifySendStatus (وضعیت ارسال پیام): " + bundleToString(bundle));
+            log("[Callback] notifySendStatus (Transmit Status): " + bundleToString(bundle));
             if (listener != null) listener.onSendStatus(bundle);
         }
 
         @Override
         public void receiveSmcMessage(Bundle bundle) throws RemoteException {
-            log("📥 receiveSmcMessage (پیام دریافتی از ماهواره): " + bundleToString(bundle));
+            log("[Callback] receiveSmcMessage (Inbound Packet): " + bundleToString(bundle));
             if (listener != null) listener.onReceiveMessage(bundle);
         }
     };
@@ -68,7 +68,7 @@ public class RsmcServiceBridge {
     private final ServiceConnection mConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            log("🎉 اتصال موفقیت‌آمیز! متصل شد به سرویس ماهواره: " + name);
+            log("[RSMC] Connected to satellite service: " + name);
             mService = IHwSmcService.Stub.asInterface(service);
             isBound = true;
             if (listener != null) listener.onServiceConnected();
@@ -76,7 +76,7 @@ public class RsmcServiceBridge {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            log("❌ اتصال به سرویس ماهواره قطع شد.");
+            log("[RSMC] Disconnected from satellite service.");
             mService = null;
             isBound = false;
             if (listener != null) listener.onServiceDisconnected();
@@ -101,23 +101,18 @@ public class RsmcServiceBridge {
             targetPackage = "com.huawei.lbs";
         }
         intent.setClassName(targetPackage, "com.huawei.rsmc.SmcService");
-        log("🔄 در حال تلاش برای اتصال به " + targetPackage + "/com.huawei.rsmc.SmcService ...");
+        log("[RSMC] Attempting bind to " + targetPackage + "/com.huawei.rsmc.SmcService ...");
 
         try {
             boolean result = context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
-            log("نتیجه درخواست bindService: " + result);
-            if (!result) {
-                log("⚠️ مقدار false دریافت شد. با دستور زیر سرویس را استارت کنید:");
-                log("adb shell am start-service -n com.huawei.lbs/com.huawei.rsmc.SmcService");
-            }
+            log("[RSMC] bindService result: " + result);
             return result;
         } catch (SecurityException se) {
-            log("⛔ خطای دسترسی امنیتی (SecurityException): " + se.getMessage());
-            log("💡 راه‌حل: در CMD کامپیوتر دستور زیر را بزنید:");
-            log("adb shell pm grant " + context.getPackageName() + " android.permission.WRITE_SECURE_SETTINGS");
+            log("[SECURITY] Permission Denial: " + se.getMessage());
+            log("Grant permission via: adb shell pm grant " + context.getPackageName() + " android.permission.WRITE_SECURE_SETTINGS");
             return false;
         } catch (Exception e) {
-            log("❌ خطا هنگام bindService: " + e.getMessage());
+            log("[ERROR] bindService failed: " + e.getMessage());
             return false;
         }
     }
@@ -129,22 +124,22 @@ public class RsmcServiceBridge {
             } catch (Exception ignored) {}
             isBound = false;
             mService = null;
-            log("اتصال از سرویس قطع شد.");
+            log("[RSMC] Service unbound.");
         }
     }
 
     public int startSatelliteService() {
         if (!isConnected()) {
-            log("خطا: ابتدا دکمه «اتصال به سرویس» را بزنید!");
+            log("[ERROR] Service not connected. Tap 'Connect to SmcService' first.");
             return -1;
         }
         try {
-            log("🚀 فراخوانی startSmcService...");
+            log("[RSMC] Invoking startSmcService...");
             int result = mService.startSmcService(mCallback);
-            log("کد بازگشتی startSmcService: " + result);
+            log("[RSMC] startSmcService returned: " + result);
             return result;
         } catch (Exception e) {
-            log("خطا در startSmcService: " + e.getMessage());
+            log("[ERROR] startSmcService failed: " + e.getMessage());
             return -1;
         }
     }
@@ -152,62 +147,55 @@ public class RsmcServiceBridge {
     public int stopSatelliteService() {
         if (!isConnected()) return -1;
         try {
-            log("🛑 فراخوانی stopSmcService...");
+            log("[RSMC] Invoking stopSmcService...");
             int result = mService.stopSmcService(mCallback);
-            log("کد بازگشتی stopSmcService: " + result);
+            log("[RSMC] stopSmcService returned: " + result);
             return result;
         } catch (Exception e) {
-            log("خطا در stopSmcService: " + e.getMessage());
+            log("[ERROR] stopSmcService failed: " + e.getMessage());
             return -1;
         }
     }
 
     public Bundle querySysCapability() {
-        if (!isConnected()) {
-            log("خطا: ابتدا دکمه «اتصال به سرویس» را بزنید!");
-            return null;
-        }
+        if (!isConnected()) return null;
         try {
-            log("🔍 در حال استعلام قابلیت‌های سیستم (querySysCapability)...");
+            log("[RSMC] Querying querySysCapability...");
             Bundle res = mService.querySysCapability();
-            log("پاسخ قابلیت سیستم: " + bundleToString(res));
+            log("[RSMC] System Capability: " + bundleToString(res));
             return res;
         } catch (Exception e) {
-            log("خطا در querySysCapability: " + e.getMessage());
+            log("[ERROR] querySysCapability: " + e.getMessage());
             return null;
         }
     }
 
     public Bundle queryProductCapability() {
-        if (!isConnected()) {
-            log("خطا: ابتدا دکمه «اتصال به سرویس» را بزنید!");
-            return null;
-        }
+        if (!isConnected()) return null;
         try {
-            log("🔍 در حال استعلام قابلیت‌های سخت‌افزار مودم (queryProductCapability)...");
+            log("[RSMC] Querying queryProductCapability...");
             Bundle res = mService.queryProductCapability();
-            log("پاسخ قابلیت سخت‌افزار/مودم: " + bundleToString(res));
+            log("[RSMC] Product Capability: " + bundleToString(res));
             return res;
         } catch (Exception e) {
-            log("خطا در queryProductCapability: " + e.getMessage());
+            log("[ERROR] queryProductCapability: " + e.getMessage());
             return null;
         }
     }
 
     public int sendSatelliteMessage(SmcMessagePacket packet) {
         if (!isConnected()) {
-            log("خطا: سرویس متصل نیست!");
+            log("[ERROR] Service not connected.");
             return -1;
         }
         try {
             Bundle bundle = packet.toBundle();
-            log("🛰️ ارسال پکت به sendSmcMessage (مود: " + packet.sendMode.getCode() + ")...");
-            log("محتوای پکت ارسالی: " + bundleToString(bundle));
+            log("[RSMC] Sending packet via sendSmcMessage (mode: " + packet.sendMode.getCode() + ")...");
             int result = mService.sendSmcMessage(packet.sendMode.getCode(), bundle);
-            log("نتیجه ارسال پیام ماهواره: " + result);
+            log("[RSMC] sendSmcMessage returned: " + result);
             return result;
         } catch (Exception e) {
-            log("خطا در sendSmcMessage: " + e.getMessage());
+            log("[ERROR] sendSmcMessage failed: " + e.getMessage());
             return -1;
         }
     }

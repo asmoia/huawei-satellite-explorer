@@ -5,7 +5,6 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
-import android.telephony.TelephonyManager;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -32,81 +31,62 @@ public class HardwareDiagnostic {
 
         // 1. Device Info
         list.add(new DiagnosticItem(
-                "مدل دستگاه (Model)",
+                "Device Hardware Model",
                 Build.MANUFACTURER + " " + Build.MODEL + " (" + Build.DEVICE + ")",
                 true,
-                "بورد: " + Build.BOARD + " | سخت‌افزار: " + Build.HARDWARE
+                "Board: " + Build.BOARD + " | Hardware: " + Build.HARDWARE
         ));
 
         // 2. Baseband / Radio
         String radio = Build.getRadioVersion();
         list.add(new DiagnosticItem(
-                "ورژن رادیو / بیس‌باند مودم",
-                radio != null ? radio : "نامشخص",
+                "Modem Baseband Version",
+                radio != null ? radio : "Unknown",
                 radio != null && !radio.isEmpty(),
-                "فرم‌ور رادیویی مودم برای ارتباط بی‌سیم"
+                "Cellular & Satellite RF Baseband Firmware"
         ));
 
         // 3. System Properties check
         String rsmcSwitch = getSystemProperty("hw_sc.rsmc_switch", "not_set");
         list.add(new DiagnosticItem(
-                "فلگ کلیدی RSMC (hw_sc.rsmc_switch)",
+                "RSMC Switch Flag (hw_sc.rsmc_switch)",
                 rsmcSwitch,
                 "true".equalsIgnoreCase(rsmcSwitch) || "1".equals(rsmcSwitch),
-                "این فلگ توسط MeeTime برای فعال‌سازی کامل منوی ماهواره چک می‌شود."
+                "Key switch property used by Huawei MeeTime"
         ));
 
         String satSupport = getSystemProperty("ro.config.hw_satellite_support", "not_set");
         list.add(new DiagnosticItem(
-                "پشتیبانی ماهواره (ro.config.hw_satellite_support)",
+                "Satellite Support (ro.config.hw_satellite_support)",
                 satSupport,
                 "true".equalsIgnoreCase(satSupport) || "1".equals(satSupport),
-                "پیکربندی پایه رام برای پشتیبانی ماهواره"
-        ));
-
-        String huaweiSat = getSystemProperty("ro.huawei.satellite_support", "not_set");
-        list.add(new DiagnosticItem(
-                "پشتیبانی ماهواره هواوی (ro.huawei.satellite_support)",
-                huaweiSat,
-                "true".equalsIgnoreCase(huaweiSat) || "1".equals(huaweiSat),
-                "فلگ سخت‌افزاری هواوی"
-        ));
-
-        String mcTelephonySat = getSystemProperty("hw_mc.telephony.satellite", "not_set");
-        list.add(new DiagnosticItem(
-                "تلفنی ماهواره (hw_mc.telephony.satellite)",
-                mcTelephonySat,
-                "true".equalsIgnoreCase(mcTelephonySat) || "1".equals(mcTelephonySat),
-                "زیرسیستم مخابرات ماهواره‌ای"
+                "Framework base satellite capability flag"
         ));
 
         String emuiVersion = getSystemProperty("ro.build.version.emui", "not_set");
         list.add(new DiagnosticItem(
-                "نسخه رابط‌کاربری EMUI / HarmonyOS",
+                "EMUI / HarmonyOS Version",
                 emuiVersion,
                 true,
-                "نسخه سیستم‌عامل دستگاه شما"
+                "OS Build Version"
         ));
 
         // 4. Inspect Packages
-        checkPackage(context, "com.huawei.lbs", "سرویس موقعیت مکانی و درایور RSMC (com.huawei.lbs)", list);
-        checkPackage(context, "com.huawei.hwvoipservice", "دیمن رادیویی میتایم (MeeTime Service)", list);
-        checkPackage(context, "com.huawei.meetime", "اپلیکیشن میتایم (Huawei MeeTime)", list);
+        checkPackage(context, "com.huawei.lbs", "Huawei LBS & RSMC Driver Service (com.huawei.lbs)", list);
+        checkPackage(context, "com.huawei.hwvoipservice", "MeeTime Audio Daemon (com.huawei.hwvoipservice)", list);
+        checkPackage(context, "com.huawei.meetime", "Huawei MeeTime Application (com.huawei.meetime)", list);
 
         // 5. Check Service in com.huawei.lbs
         boolean hasSmcService = checkServiceInPackage(context, "com.huawei.lbs", "com.huawei.rsmc.SmcService");
         list.add(new DiagnosticItem(
-                "کشف سرویس SmcService در سیستم",
-                hasSmcService ? "یافت شد (Present)" : "یافت نشد (Not Declared)",
+                "SmcService Discovery",
+                hasSmcService ? "Present (Registered in System)" : "Not Declared",
                 hasSmcService,
-                "سرویس رسمی ارتباط ماهواره‌ای هواوی در لایه موقعیت مکانی"
+                "Official Huawei RSMC Satellite IPC Endpoint"
         ));
 
-        // 6. Inspect Device Nodes (/dev/beidou*, /dev/modem*, /dev/hw_*)
+        // 6. Inspect Device Nodes
         checkDeviceNodes(list);
-
-        // 7. Check Android Telephony Satellite Service
-        checkServiceManager(list);
 
         return list;
     }
@@ -116,16 +96,16 @@ public class HardwareDiagnostic {
             PackageInfo pi = ctx.getPackageManager().getPackageInfo(pkgName, 0);
             list.add(new DiagnosticItem(
                     label,
-                    "نصب است (نسخه " + pi.versionName + " / کد " + pi.versionCode + ")",
+                    "Installed (v" + pi.versionName + " / code " + pi.versionCode + ")",
                     true,
-                    "پکیج در رام گوشی حاضر است"
+                    "Package present on device"
             ));
         } catch (PackageManager.NameNotFoundException e) {
             list.add(new DiagnosticItem(
                     label,
-                    "یافت نشد (Not Installed)",
+                    "Not Installed",
                     false,
-                    "پکیج روی این رام تعبیه نشده است"
+                    "Package not found on this ROM"
             ));
         }
     }
@@ -165,41 +145,11 @@ public class HardwareDiagnostic {
             }
         }
         list.add(new DiagnosticItem(
-                "درایورهای سطح هسته (Kernel Device Nodes)",
-                count > 0 ? found.toString() : "گره مستقیم ماهواره در /dev یافت نشد",
+                "Kernel Radio Nodes (/dev)",
+                count > 0 ? found.toString() : "Direct radio node not exposed in /dev",
                 count > 0,
-                "نودهای دسترسی مستقیم درایور رادیویی"
+                "Low-level driver character device nodes"
         ));
-    }
-
-    private static void checkServiceManager(List<DiagnosticItem> list) {
-        try {
-            Class<?> smClass = Class.forName("android.os.ServiceManager");
-            Method getService = smClass.getMethod("getService", String.class);
-
-            String[] services = {"satellite", "rsmc", "hwtelephony", "location"};
-            StringBuilder sb = new StringBuilder();
-            for (String s : services) {
-                Object binder = getService.invoke(null, s);
-                if (binder != null) {
-                    if (sb.length() > 0) sb.append(", ");
-                    sb.append(s).append(": فعال");
-                }
-            }
-            list.add(new DiagnosticItem(
-                    "بایندرهای فعال سیستم (ServiceManager)",
-                    sb.length() > 0 ? sb.toString() : "سرویس‌های ماهواره در بایندر ثبت نشده‌اند",
-                    sb.toString().contains("satellite") || sb.toString().contains("rsmc"),
-                    "بررسی ثبت مستقیم در سرویس منیجر سیستمی"
-            ));
-        } catch (Exception e) {
-            list.add(new DiagnosticItem(
-                    "بررسی ServiceManager",
-                    "عدم دسترسی به رفلکشن: " + e.getMessage(),
-                    false,
-                    "محدودیت مجوز کاربری"
-            ));
-        }
     }
 
     public static String getSystemProperty(String key, String def) {

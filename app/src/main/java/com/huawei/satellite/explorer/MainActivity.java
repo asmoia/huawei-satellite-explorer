@@ -1,9 +1,7 @@
 package com.huawei.satellite.explorer;
 
 import android.Manifest;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.hardware.Sensor;
@@ -42,7 +40,7 @@ import com.huawei.satellite.explorer.model.SatelliteTemplate;
 import com.huawei.satellite.explorer.model.SmcContentType;
 import com.huawei.satellite.explorer.model.SmcMessagePacket;
 import com.huawei.satellite.explorer.service.RsmcServiceBridge;
-import com.huawei.satellite.explorer.view.SkyRadarView;
+import com.huawei.satellite.explorer.view.MeeTimeSatelliteRadarView;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -53,20 +51,23 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity implements RsmcServiceBridge.BridgeListener, SensorEventListener {
 
     private TabLayout tabLayout;
-    private View viewRadar, viewDiagnostic, viewService, viewTransmitter, viewLauncher;
+    private View viewAlign, viewTransmitter, viewService, viewDiagnostic;
     private LinearLayout containerDiagnosticResults;
     private TextView tvLogOutput;
     private ScrollView scrollLog;
+
+    // MeeTime Alignment UI
+    private MeeTimeSatelliteRadarView meeTimeRadarView;
+    private MaterialCardView cardMeeTimeStatus;
+    private TextView tvSignalIcon, tvMeeTimeTitle, tvLockBadge, tvMeeTimeInstruction;
+    private TextView tvTargetSatDetails, tvPhoneAttitude, tvTrackedBdsCount, tvPeakSignal;
+
+    // Transmitter UI
     private EditText etTargetPackage, etCustomText, etRecipient;
     private Spinner spSendMode, spTemplate;
-    private TextView tvGpsCoords, tvAdbCommands;
+    private TextView tvGpsCoords;
 
-    // Sky Radar & Calibration UI
-    private SkyRadarView skyRadarView;
-    private MaterialCardView cardRadarStatus;
-    private TextView tvRadarStatus, tvRadarGuide, tvGeoTargetInfo, tvOrientationInfo, tvBdsCount, tvMaxSnr;
-
-    // Sensors & GNSS
+    // Hardware & Sensors
     private SensorManager sensorManager;
     private Sensor rotationVectorSensor;
     private LocationManager locationManager;
@@ -78,7 +79,7 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
     private double currentLon = 51.3890;
     private float targetAzimuth = 169.9f;
     private float targetElevation = 47.8f;
-    private boolean lastAlignedState = false;
+    private boolean lastLockedState = false;
 
     private final float[] rotationMatrix = new float[9];
     private final float[] orientationAngles = new float[3];
@@ -88,81 +89,98 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mBridge = new RsmcServiceBridge(this);
-        mBridge.setListener(this);
-        vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        try {
+            mBridge = new RsmcServiceBridge(this);
+            mBridge.setListener(this);
+            vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        } catch (Exception ignored) {}
 
         initViews();
         setupTabs();
         setupTransmitterUI();
-        setupLauncherUI();
         initSensorsAndGnss();
         requestAppPermissions();
 
-        // Run initial quick diagnostic
+        // Run hardware audit in background
         runDiagnostic();
     }
 
     private void checkSecureSettingsPermission() {
-        int perm = checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS);
-        if (perm != PackageManager.PERMISSION_GRANTED) {
-            log("⚠️ هشدار: مجوز WRITE_SECURE_SETTINGS به این برنامه داده نشده است!");
-            log("📌 در CMD کامپیوتر این دستور را وارد کنید:");
-            log("adb shell pm grant " + getPackageName() + " android.permission.WRITE_SECURE_SETTINGS");
-        } else {
-            log("✅ مجوز WRITE_SECURE_SETTINGS فعال است.");
-        }
+        try {
+            int perm = checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS);
+            if (perm != PackageManager.PERMISSION_GRANTED) {
+                log("[WARN] WRITE_SECURE_SETTINGS not granted. Run: adb shell pm grant " + getPackageName() + " android.permission.WRITE_SECURE_SETTINGS");
+            } else {
+                log("[OK] WRITE_SECURE_SETTINGS permission granted.");
+            }
+        } catch (Exception ignored) {}
     }
 
     private void initViews() {
         tabLayout = findViewById(R.id.tabLayout);
-        viewRadar = findViewById(R.id.viewRadar);
-        viewDiagnostic = findViewById(R.id.viewDiagnostic);
-        viewService = findViewById(R.id.viewService);
+        viewAlign = findViewById(R.id.viewAlign);
         viewTransmitter = findViewById(R.id.viewTransmitter);
-        viewLauncher = findViewById(R.id.viewLauncher);
+        viewService = findViewById(R.id.viewService);
+        viewDiagnostic = findViewById(R.id.viewDiagnostic);
 
-        // Sky Radar views
-        skyRadarView = findViewById(R.id.skyRadarView);
-        cardRadarStatus = findViewById(R.id.cardRadarStatus);
-        tvRadarStatus = findViewById(R.id.tvRadarStatus);
-        tvRadarGuide = findViewById(R.id.tvRadarGuide);
-        tvGeoTargetInfo = findViewById(R.id.tvGeoTargetInfo);
-        tvOrientationInfo = findViewById(R.id.tvOrientationInfo);
-        tvBdsCount = findViewById(R.id.tvBdsCount);
-        tvMaxSnr = findViewById(R.id.tvMaxSnr);
+        // MeeTime Alignment views
+        meeTimeRadarView = findViewById(R.id.meeTimeRadarView);
+        cardMeeTimeStatus = findViewById(R.id.cardMeeTimeStatus);
+        tvSignalIcon = findViewById(R.id.tvSignalIcon);
+        tvMeeTimeTitle = findViewById(R.id.tvMeeTimeTitle);
+        tvLockBadge = findViewById(R.id.tvLockBadge);
+        tvMeeTimeInstruction = findViewById(R.id.tvMeeTimeInstruction);
+        tvTargetSatDetails = findViewById(R.id.tvTargetSatDetails);
+        tvPhoneAttitude = findViewById(R.id.tvPhoneAttitude);
+        tvTrackedBdsCount = findViewById(R.id.tvTrackedBdsCount);
+        tvPeakSignal = findViewById(R.id.tvPeakSignal);
 
-        skyRadarView.setAlignmentListener((isAligned, offsetDegrees) -> runOnUiThread(() -> {
-            if (isAligned != lastAlignedState) {
-                lastAlignedState = isAligned;
-                if (isAligned) {
-                    cardRadarStatus.setCardBackgroundColor(Color.parseColor("#1B5E20")); // Dark Green
-                    tvRadarStatus.setText("🎯 تراز کامل با ماهواره بیدو (GEO-5) برقرار شد!");
-                    tvRadarGuide.setText("زاویه سیگنال در حالت ایده‌آل (۹۵٪+). آماده دریافت بیشترین توان سیگنال ماهواره.");
+        meeTimeRadarView.setStatusListener((isLocked, offsetDegrees, instructionEn) -> runOnUiThread(() -> {
+            tvMeeTimeInstruction.setText(instructionEn);
+
+            if (isLocked != lastLockedState) {
+                lastLockedState = isLocked;
+                if (isLocked) {
+                    cardMeeTimeStatus.setCardBackgroundColor(Color.parseColor("#0A2818"));
+                    tvSignalIcon.setText("📶");
+                    tvMeeTimeTitle.setText("Satellite Connected");
+                    tvLockBadge.setText("CONNECTED");
+                    tvLockBadge.setTextColor(Color.parseColor("#00E676"));
+                    tvLockBadge.setBackgroundColor(Color.parseColor("#2200E676"));
                     triggerHaptic();
-                    log("🎯 وضعیت تراز: با موفقیت به سمت ماهواره بیدو هم‌راستا شد (انحراف: " + String.format(Locale.US, "%.1f°", offsetDegrees) + ")");
+                    log("[MeeTime] Satellite link locked (Offset: " + String.format(Locale.US, "%.1f°", offsetDegrees) + ")");
                 } else {
-                    cardRadarStatus.setCardBackgroundColor(Color.parseColor("#1A237E")); // Indigo Blue
-                    tvRadarStatus.setText("🛰️ در حال جستجو... گوشی را با هدف طلایی تراز کنید");
-                    tvRadarGuide.setText("گوشی را به سمت جنوب (آزیموت ~۱۷۰°) گرفته و ۴۵ الی ۵۰ درجه رو به آسمان ببرید.");
+                    cardMeeTimeStatus.setCardBackgroundColor(Color.parseColor("#10192D"));
+                    tvSignalIcon.setText("🛰️");
+                    tvMeeTimeTitle.setText("Search for Satellite");
+                    tvLockBadge.setText("SEARCHING");
+                    tvLockBadge.setTextColor(Color.parseColor("#FFB300"));
+                    tvLockBadge.setBackgroundColor(Color.parseColor("#22FFB300"));
                 }
             }
         }));
 
+        findViewById(R.id.btnQuickGoToSend).setOnClickListener(v -> {
+            if (tabLayout != null) {
+                TabLayout.Tab tab = tabLayout.getTabAt(1);
+                if (tab != null) tab.select();
+            }
+        });
+
+        // Logs
         containerDiagnosticResults = findViewById(R.id.containerDiagnosticResults);
         tvLogOutput = findViewById(R.id.tvLogOutput);
         scrollLog = findViewById(R.id.scrollLog);
         findViewById(R.id.btnClearLog).setOnClickListener(v -> tvLogOutput.setText(""));
 
+        // Service Tab controls
         etTargetPackage = findViewById(R.id.etTargetPackage);
         findViewById(R.id.btnRunDiagnostic).setOnClickListener(v -> runDiagnostic());
-
         findViewById(R.id.btnBindService).setOnClickListener(v -> {
             checkSecureSettingsPermission();
             String pkg = etTargetPackage.getText().toString().trim();
             mBridge.bindSmcService(pkg);
         });
-
         findViewById(R.id.btnUnbindService).setOnClickListener(v -> mBridge.unbind());
         findViewById(R.id.btnStartSatellite).setOnClickListener(v -> mBridge.startSatelliteService());
         findViewById(R.id.btnStopSatellite).setOnClickListener(v -> mBridge.stopSatelliteService());
@@ -173,27 +191,24 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
     }
 
     private void setupTabs() {
-        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_radar));
-        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_diagnostic));
-        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_service));
-        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_transmitter));
-        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_launcher));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_align));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_message));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_rsmc));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_hardware));
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
-                viewRadar.setVisibility(View.GONE);
-                viewDiagnostic.setVisibility(View.GONE);
-                viewService.setVisibility(View.GONE);
+                viewAlign.setVisibility(View.GONE);
                 viewTransmitter.setVisibility(View.GONE);
-                viewLauncher.setVisibility(View.GONE);
+                viewService.setVisibility(View.GONE);
+                viewDiagnostic.setVisibility(View.GONE);
 
                 switch (tab.getPosition()) {
-                    case 0: viewRadar.setVisibility(View.VISIBLE); break;
-                    case 1: viewDiagnostic.setVisibility(View.VISIBLE); break;
+                    case 0: viewAlign.setVisibility(View.VISIBLE); break;
+                    case 1: viewTransmitter.setVisibility(View.VISIBLE); break;
                     case 2: viewService.setVisibility(View.VISIBLE); break;
-                    case 3: viewTransmitter.setVisibility(View.VISIBLE); break;
-                    case 4: viewLauncher.setVisibility(View.VISIBLE); break;
+                    case 3: viewDiagnostic.setVisibility(View.VISIBLE); break;
                 }
             }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
@@ -202,16 +217,19 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
     }
 
     private void initSensorsAndGnss() {
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        if (sensorManager != null) {
-            rotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-            if (rotationVectorSensor == null) {
-                rotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
+        try {
+            sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+            if (sensorManager != null) {
+                rotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+                if (rotationVectorSensor == null) {
+                    rotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
+                }
             }
+            locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            computeGeoOrbitPosition(currentLat, currentLon);
+        } catch (Exception e) {
+            log("[WARN] Sensor init: " + e.getMessage());
         }
-
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        updateGeoTarget(currentLat, currentLon);
     }
 
     private void startGnssTracking() {
@@ -219,153 +237,167 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
             return;
         }
 
-        if (locationManager != null && gnssCallback == null) {
-            gnssCallback = new GnssStatus.Callback() {
-                @Override
-                public void onSatelliteStatusChanged(@NonNull GnssStatus status) {
-                    List<GnssSatInfo> list = new ArrayList<>();
-                    int bdsCount = 0;
-                    float maxSnr = 0f;
-                    int count = status.getSatelliteCount();
+        try {
+            if (locationManager != null && gnssCallback == null) {
+                gnssCallback = new GnssStatus.Callback() {
+                    @Override
+                    public void onSatelliteStatusChanged(@NonNull GnssStatus status) {
+                        List<GnssSatInfo> list = new ArrayList<>();
+                        int bdsCount = 0;
+                        float maxSnr = 0f;
+                        int count = status.getSatelliteCount();
 
-                    for (int i = 0; i < count; i++) {
-                        if (status.getConstellationType(i) == GnssStatus.CONSTELLATION_BEIDOU) {
-                            bdsCount++;
-                            float snr = status.getCn0DbHz(i);
-                            if (snr > maxSnr) maxSnr = snr;
-                            list.add(new GnssSatInfo(
-                                    status.getSvid(i),
-                                    status.getAzimuthDegrees(i),
-                                    status.getElevationDegrees(i),
-                                    snr,
-                                    status.usedInFix(i),
-                                    GnssStatus.CONSTELLATION_BEIDOU
-                            ));
+                        for (int i = 0; i < count; i++) {
+                            if (status.getConstellationType(i) == GnssStatus.CONSTELLATION_BEIDOU) {
+                                bdsCount++;
+                                float snr = status.getCn0DbHz(i);
+                                if (snr > maxSnr) maxSnr = snr;
+                                list.add(new GnssSatInfo(
+                                        status.getSvid(i),
+                                        status.getAzimuthDegrees(i),
+                                        status.getElevationDegrees(i),
+                                        snr,
+                                        status.usedInFix(i),
+                                        GnssStatus.CONSTELLATION_BEIDOU
+                                ));
+                            }
                         }
+
+                        final int finalBds = bdsCount;
+                        final float finalSnr = maxSnr;
+                        runOnUiThread(() -> {
+                            meeTimeRadarView.updateSatellites(list);
+                            tvTrackedBdsCount.setText("Active BDS Satellites: " + finalBds);
+                            tvPeakSignal.setText(String.format(Locale.US, "Peak C/N0: %.1f dB-Hz", finalSnr));
+                        });
                     }
+                };
 
-                    final int finalBdsCount = bdsCount;
-                    final float finalMaxSnr = maxSnr;
-                    runOnUiThread(() -> {
-                        skyRadarView.updateSatellites(list);
-                        tvBdsCount.setText("ماهواره بیدو فعال: " + finalBdsCount);
-                        tvMaxSnr.setText(String.format(Locale.US, "حداکثر سیگنال: %.1f dB", finalMaxSnr));
-                    });
-                }
-            };
+                locationManager.registerGnssStatusCallback(gnssCallback, new Handler(Looper.getMainLooper()));
 
-            locationManager.registerGnssStatusCallback(gnssCallback, new Handler(Looper.getMainLooper()));
-
-            // Also register location listener to keep GPS updated
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 5f, new LocationListener() {
-                @Override
-                public void onLocationChanged(@NonNull Location loc) {
-                    currentLat = loc.getLatitude();
-                    currentLon = loc.getLongitude();
-                    updateGeoTarget(currentLat, currentLon);
-                    tvGpsCoords.setText(String.format(Locale.US, "GPS: %.5f, %.5f", currentLat, currentLon));
-                }
-            });
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 5f, new LocationListener() {
+                    @Override
+                    public void onLocationChanged(@NonNull Location loc) {
+                        currentLat = loc.getLatitude();
+                        currentLon = loc.getLongitude();
+                        computeGeoOrbitPosition(currentLat, currentLon);
+                        tvGpsCoords.setText(String.format(Locale.US, "GPS: %.5f, %.5f", currentLat, currentLon));
+                    }
+                });
+            }
+        } catch (Exception e) {
+            log("[WARN] GNSS start: " + e.getMessage());
         }
     }
 
-    private void updateGeoTarget(double lat, double lon) {
-        double Re = 6378.137;
-        double Rs = 42164.0;
-        double satLon = 58.75; // BeiDou GEO-5 orbital slot
+    /**
+     * Exact Huawei MeeTime Clarke Belt Geostationary Orbit Calculation for BeiDou-3 GEO-5 (58.75°E)
+     */
+    private void computeGeoOrbitPosition(double lat, double lon) {
+        double Re = 6378.137;  // Earth equatorial radius (km)
+        double Rs = 42164.137; // Geostationary orbital radius (km)
+        double satLon = 58.75; // BeiDou-3 GEO-5 orbital position (covers Middle East & Iran)
 
         double phi = Math.toRadians(lat);
         double deltaLam = Math.toRadians(satLon - lon);
 
+        // Azimuth formula
         double az = Math.toDegrees(Math.atan2(Math.sin(deltaLam), Math.tan(phi)));
         targetAzimuth = (float) ((180.0 - az) % 360.0);
         if (targetAzimuth < 0) targetAzimuth += 360.0f;
 
+        // Elevation formula
         double cosGamma = Math.cos(phi) * Math.cos(deltaLam);
-        double sinGamma = Math.sin(Math.acos(cosGamma));
-        targetElevation = (float) Math.toDegrees(Math.atan((cosGamma - (Re / Rs)) / sinGamma));
+        cosGamma = Math.max(-1.0, Math.min(1.0, cosGamma));
+        double sinGamma = Math.sqrt(Math.max(0.0, 1.0 - cosGamma * cosGamma));
+        targetElevation = (float) Math.toDegrees(Math.atan((cosGamma - (Re / Rs)) / (sinGamma > 0 ? sinGamma : 0.0001)));
 
-        skyRadarView.setTargetPosition(targetAzimuth, targetElevation);
-        tvGeoTargetInfo.setText(String.format(Locale.US,
-                "هدف ثابت: BeiDou GEO-5 (۵۸.۷۵°E) | آزیموت: %.1f° | شیب: %.1f°", targetAzimuth, targetElevation));
+        meeTimeRadarView.setSatelliteTarget(targetAzimuth, targetElevation);
+        tvTargetSatDetails.setText(String.format(Locale.US,
+                "Target: BDS GEO-5 (58.75°E)\nAz: %.1f° • El: %.1f°", targetAzimuth, targetElevation));
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
-            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
-            SensorManager.getOrientation(rotationMatrix, orientationAngles);
+        try {
+            if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+                SensorManager.getOrientation(rotationMatrix, orientationAngles);
 
-            // Heading: 0 to 360
-            float heading = (float) Math.toDegrees(orientationAngles[0]);
-            if (heading < 0) heading += 360f;
+                // Compass Heading: 0 to 360
+                float heading = (float) Math.toDegrees(orientationAngles[0]);
+                if (heading < 0) heading += 360f;
 
-            // Pitch: -90 (vertical down) to +90 (vertical up)
-            // When holding phone angled towards the sky, pitch is positive elevation
-            float pitch = (float) -Math.toDegrees(orientationAngles[1]);
-            if (pitch < 0) pitch = 0f;
-            if (pitch > 90f) pitch = 90f;
+                // Pitch angle: phone tilt relative to ground
+                float pitch = (float) -Math.toDegrees(orientationAngles[1]);
+                if (pitch < 0) pitch = 0f;
+                if (pitch > 90f) pitch = 90f;
 
-            skyRadarView.setOrientation(heading, pitch);
+                meeTimeRadarView.setPhoneOrientation(heading, pitch);
 
-            float offset = skyRadarView.getCurrentOffset();
-            tvOrientationInfo.setText(String.format(Locale.US,
-                    "جهت گوشی: آزیموت %.0f° | شیب %.0f° | انحراف از ماهواره: %.1f°",
-                    heading, pitch, offset));
-        }
+                float offset = meeTimeRadarView.getOffsetDegrees();
+                tvPhoneAttitude.setText(String.format(Locale.US,
+                        "Heading: %.0f° • Pitch: %.0f°\nOffset: %.1f°", heading, pitch, offset));
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
     private void triggerHaptic() {
-        if (vibrator != null && vibrator.hasVibrator()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createOneShot(180, VibrationEffect.DEFAULT_AMPLITUDE));
-            } else {
-                vibrator.vibrate(180);
+        try {
+            if (vibrator != null && vibrator.hasVibrator()) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createOneShot(180, VibrationEffect.DEFAULT_AMPLITUDE));
+                } else {
+                    vibrator.vibrate(180);
+                }
             }
-        }
+        } catch (Exception ignored) {}
     }
 
     private void runDiagnostic() {
-        containerDiagnosticResults.removeAllViews();
-        log("در حال اجرای اسکن کامل سخت‌افزار، بیس‌باند و سرویس‌های ماهواره...");
+        try {
+            containerDiagnosticResults.removeAllViews();
+            log("[DIAG] Starting full Hardware and Baseband inspection...");
 
-        List<HardwareDiagnostic.DiagnosticItem> items = HardwareDiagnostic.runDiagnostic(this);
-        for (HardwareDiagnostic.DiagnosticItem item : items) {
-            MaterialCardView card = new MaterialCardView(this);
-            card.setRadius(16);
-            card.setCardElevation(2);
-            card.setUseCompatPadding(true);
+            List<HardwareDiagnostic.DiagnosticItem> items = HardwareDiagnostic.runDiagnostic(this);
+            for (HardwareDiagnostic.DiagnosticItem item : items) {
+                MaterialCardView card = new MaterialCardView(this);
+                card.setRadius(14);
+                card.setCardElevation(2);
+                card.setUseCompatPadding(true);
+                card.setCardBackgroundColor(Color.parseColor("#10192D"));
 
-            LinearLayout layout = new LinearLayout(this);
-            layout.setOrientation(LinearLayout.VERTICAL);
-            layout.setPadding(24, 20, 24, 20);
+                LinearLayout layout = new LinearLayout(this);
+                layout.setOrientation(LinearLayout.VERTICAL);
+                layout.setPadding(24, 18, 24, 18);
 
-            TextView tvTitle = new TextView(this);
-            tvTitle.setText(item.title);
-            tvTitle.setTextSize(14);
-            tvTitle.setTextColor(Color.parseColor("#333333"));
-            tvTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+                TextView tvTitle = new TextView(this);
+                tvTitle.setText(item.title);
+                tvTitle.setTextSize(13);
+                tvTitle.setTextColor(Color.parseColor("#E0E6ED"));
+                tvTitle.setTypeface(null, android.graphics.Typeface.BOLD);
 
-            TextView tvVal = new TextView(this);
-            tvVal.setText(item.value);
-            tvVal.setTextSize(13);
-            tvVal.setTextColor(item.passed ? Color.parseColor("#2E7D32") : Color.parseColor("#C62828"));
-            tvVal.setTypeface(null, android.graphics.Typeface.BOLD);
+                TextView tvVal = new TextView(this);
+                tvVal.setText(item.value);
+                tvVal.setTextSize(13);
+                tvVal.setTextColor(item.passed ? Color.parseColor("#00E676") : Color.parseColor("#FF5252"));
+                tvVal.setTypeface(null, android.graphics.Typeface.BOLD);
 
-            TextView tvNote = new TextView(this);
-            tvNote.setText(item.note);
-            tvNote.setTextSize(11);
-            tvNote.setTextColor(Color.parseColor("#777777"));
+                TextView tvNote = new TextView(this);
+                tvNote.setText(item.note);
+                tvNote.setTextSize(11);
+                tvNote.setTextColor(Color.parseColor("#8A9BB0"));
 
-            layout.addView(tvTitle);
-            layout.addView(tvVal);
-            layout.addView(tvNote);
-            card.addView(layout);
-            containerDiagnosticResults.addView(card);
-        }
+                layout.addView(tvTitle);
+                layout.addView(tvVal);
+                layout.addView(tvNote);
+                card.addView(layout);
+                containerDiagnosticResults.addView(card);
+            }
+        } catch (Exception ignored) {}
     }
 
     private void setupTransmitterUI() {
@@ -375,13 +407,11 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
         etRecipient = findViewById(R.id.etRecipient);
         tvGpsCoords = findViewById(R.id.tvGpsCoords);
 
-        // Fill SendMode spinner
         ArrayAdapter<SmcContentType> modeAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, SmcContentType.values());
         modeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spSendMode.setAdapter(modeAdapter);
 
-        // Fill Template spinner
         List<SatelliteTemplate> templates = SatelliteTemplate.getDefaultTemplates();
         ArrayAdapter<SatelliteTemplate> templateAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, templates);
@@ -392,7 +422,7 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 SatelliteTemplate t = templates.get(position);
-                etCustomText.setText(t.getTitleFa());
+                etCustomText.setText(t.getTitleEn());
             }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
         });
@@ -414,50 +444,10 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
             packet.isCarryLocation = true;
             packet.peopleNumNeedHelp = 1;
 
-            log("ارسال پکت ماهواره از طریق RSMC...");
+            log("[RSMC] Transmitting packet to SmcService...");
             int code = mBridge.sendSatelliteMessage(packet);
-            Toast.makeText(this, "نتیجه ارسال: " + code, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Send Result: " + code, Toast.LENGTH_SHORT).show();
         });
-    }
-
-    private void setupLauncherUI() {
-        findViewById(R.id.btnLaunchChat).setOnClickListener(v -> launchMeeTimeActivity(
-                "com.huawei.meetime", "com.huawei.meetime.SmcChatActivity"));
-
-        findViewById(R.id.btnLaunchSearchSate).setOnClickListener(v -> {
-            // Jump directly to radar tab
-            if (tabLayout != null) {
-                TabLayout.Tab tab = tabLayout.getTabAt(0);
-                if (tab != null) tab.select();
-            }
-        });
-
-        findViewById(R.id.btnLaunchQuickHelp).setOnClickListener(v -> launchMeeTimeActivity(
-                "com.huawei.meetime", "com.huawei.meetime.SmcChatActivity"));
-
-        tvAdbCommands = findViewById(R.id.tvAdbCommands);
-        tvAdbCommands.setText(
-                "# فعال‌سازی مجوزهای ماهواره‌ای از طریق ADB:\n" +
-                "adb shell pm grant com.huawei.satellite.explorer android.permission.WRITE_SECURE_SETTINGS\n" +
-                "adb shell pm grant com.huawei.satellite.explorer android.permission.ACCESS_FINE_LOCATION\n\n" +
-                "# استارت مستقیم سرویس ماهواره در هسته سیستم:\n" +
-                "adb shell am start-service -n com.huawei.lbs/com.huawei.rsmc.SmcService\n\n" +
-                "# مشاهده لاگ‌های زنده رادیویی ماهواره:\n" +
-                "adb logcat -d | findstr /i \"rsmc sateradio SmcService\""
-        );
-    }
-
-    private void launchMeeTimeActivity(String pkg, String cls) {
-        try {
-            Intent intent = new Intent();
-            intent.setComponent(new ComponentName(pkg, cls));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-            log("اکتیویتی با موفقیت فراخوانی شد: " + cls);
-        } catch (Exception e) {
-            log("خطا در فراخوانی " + cls + ": " + e.getMessage());
-            Toast.makeText(this, "امکان باز کردن صفحه وجود ندارد: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
     }
 
     private void fetchLocation() {
@@ -465,21 +455,23 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 101);
             return;
         }
-        if (locationManager != null) {
-            Location loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            if (loc == null) {
-                loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        try {
+            if (locationManager != null) {
+                Location loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                if (loc == null) {
+                    loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                }
+                if (loc != null) {
+                    currentLat = loc.getLatitude();
+                    currentLon = loc.getLongitude();
+                    computeGeoOrbitPosition(currentLat, currentLon);
+                    tvGpsCoords.setText(String.format(Locale.US, "GPS: %.5f, %.5f", currentLat, currentLon));
+                    log(String.format(Locale.US, "[GPS] Lat: %.5f, Lon: %.5f", currentLat, currentLon));
+                } else {
+                    Toast.makeText(this, "Using default coordinates", Toast.LENGTH_SHORT).show();
+                }
             }
-            if (loc != null) {
-                currentLat = loc.getLatitude();
-                currentLon = loc.getLongitude();
-                updateGeoTarget(currentLat, currentLon);
-                tvGpsCoords.setText(String.format(Locale.US, "GPS: %.5f, %.5f", currentLat, currentLon));
-                log(String.format(Locale.US, "موقعیت مکانی ثبت شد: %.5f, %.5f", currentLat, currentLon));
-            } else {
-                Toast.makeText(this, "موقعیت یافت نشد، از مختصات پیش‌فرض استفاده شد.", Toast.LENGTH_SHORT).show();
-            }
-        }
+        } catch (Exception ignored) {}
     }
 
     private void requestAppPermissions() {
@@ -487,7 +479,8 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION,
                 Manifest.permission.READ_PHONE_STATE,
-                Manifest.permission.RECORD_AUDIO
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.VIBRATE
         };
         ActivityCompat.requestPermissions(this, perms, 100);
     }
@@ -503,43 +496,51 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
     @Override
     protected void onResume() {
         super.onResume();
-        if (sensorManager != null && rotationVectorSensor != null) {
-            sensorManager.registerListener(this, rotationVectorSensor, SensorManager.SENSOR_DELAY_UI);
-        }
-        startGnssTracking();
+        try {
+            if (sensorManager != null && rotationVectorSensor != null) {
+                sensorManager.registerListener(this, rotationVectorSensor, SensorManager.SENSOR_DELAY_UI);
+            }
+            startGnssTracking();
+        } catch (Exception ignored) {}
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if (sensorManager != null) {
-            sensorManager.unregisterListener(this);
-        }
-        if (locationManager != null && gnssCallback != null) {
-            locationManager.unregisterGnssStatusCallback(gnssCallback);
-            gnssCallback = null;
-        }
+        try {
+            if (sensorManager != null) {
+                sensorManager.unregisterListener(this);
+            }
+            if (locationManager != null && gnssCallback != null) {
+                locationManager.unregisterGnssStatusCallback(gnssCallback);
+                gnssCallback = null;
+            }
+        } catch (Exception ignored) {}
     }
 
     private void log(String msg) {
         runOnUiThread(() -> {
-            String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
-            tvLogOutput.append("[" + time + "] " + msg + "\n");
-            scrollLog.post(() -> scrollLog.fullScroll(View.FOCUS_DOWN));
+            try {
+                String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
+                tvLogOutput.append("[" + time + "] " + msg + "\n");
+                scrollLog.post(() -> scrollLog.fullScroll(View.FOCUS_DOWN));
+            } catch (Exception ignored) {}
         });
     }
 
     // BridgeListener callbacks
-    @Override public void onServiceConnected() { log("وضعیت بریج: سرویس فعال و آماده پاسخگویی است."); }
-    @Override public void onServiceDisconnected() { log("وضعیت بریج: ارتباط با سرویس قطع شد."); }
+    @Override public void onServiceConnected() { log("[RSMC Bridge] Connected to SmcService."); }
+    @Override public void onServiceDisconnected() { log("[RSMC Bridge] Disconnected from SmcService."); }
     @Override public void onLog(String message) { log(message); }
-    @Override public void onSatelliteInfo(Bundle bundle) { log("📡 دریافت داده سیگنال ماهواره: " + RsmcServiceBridge.bundleToString(bundle)); }
-    @Override public void onSendStatus(Bundle bundle) { log("📤 وضعیت ارسال پکت: " + RsmcServiceBridge.bundleToString(bundle)); }
-    @Override public void onReceiveMessage(Bundle bundle) { log("📥 پیام ماهواره‌ای جدید: " + RsmcServiceBridge.bundleToString(bundle)); }
+    @Override public void onSatelliteInfo(Bundle bundle) { log("[Signal] " + RsmcServiceBridge.bundleToString(bundle)); }
+    @Override public void onSendStatus(Bundle bundle) { log("[Send Status] " + RsmcServiceBridge.bundleToString(bundle)); }
+    @Override public void onReceiveMessage(Bundle bundle) { log("[Receive] " + RsmcServiceBridge.bundleToString(bundle)); }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mBridge.unbind();
+        try {
+            mBridge.unbind();
+        } catch (Exception ignored) {}
     }
 }
