@@ -69,6 +69,17 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
         runDiagnostic();
     }
 
+    private void checkSecureSettingsPermission() {
+        int perm = checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS);
+        if (perm != PackageManager.PERMISSION_GRANTED) {
+            log("⚠️ هشدار: مجوز WRITE_SECURE_SETTINGS به این برنامه داده نشده است!");
+            log("📌 در CMD کامپیوتر این دستور را وارد کنید:");
+            log("adb shell pm grant " + getPackageName() + " android.permission.WRITE_SECURE_SETTINGS");
+        } else {
+            log("✅ مجوز WRITE_SECURE_SETTINGS فعال است.");
+        }
+    }
+
     private void initViews() {
         tabLayout = findViewById(R.id.tabLayout);
         viewDiagnostic = findViewById(R.id.viewDiagnostic);
@@ -85,6 +96,7 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
         findViewById(R.id.btnRunDiagnostic).setOnClickListener(v -> runDiagnostic());
 
         findViewById(R.id.btnBindService).setOnClickListener(v -> {
+            checkSecureSettingsPermission();
             String pkg = etTargetPackage.getText().toString().trim();
             mBridge.bindSmcService(pkg);
         });

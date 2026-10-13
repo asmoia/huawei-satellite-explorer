@@ -2,14 +2,27 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Location & Radio Permissions -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PRIVILEGED_PHONE_STATE" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Huawei Specific permissions (requested in case granted or privileged) -->
+    <!-- Privileged System Settings Permissions (Required by com.huawei.lbs/SmcService) -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" tools:ignore="ProtectedPermissions" />
+
+    <!-- Huawei Specific permissions -->
+    <uses-permission android:name="com.huawei.lbs.permission.ACCESS_BIND_LBSSERVICE" />
+    <uses-permission android:name="com.huawei.lbs.permission.ACCESS_BIND_CYBSCS" />
+    <uses-permission android:name="huawei.permission.ACCESS_LOCATION_SERVICE" />
+    <uses-permission android:name="huawei.android.permission.HW_SIGNATURE_OR_SYSTEM" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="com.huawei.permission.ACTIVITY_NOTIFIER_PERMISSION" />
     <uses-permission android:name="com.huawei.hwvoipservice.GERNERAL" />
     <uses-permission android:name="com.huawei.meetime.GERNERAL" />
     <uses-permission android:name="com.huawei.permission.sec.ACCESS_UDID" />
