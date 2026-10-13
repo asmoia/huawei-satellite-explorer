@@ -1,0 +1,425 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+    <!-- Top App Bar -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/topAppBar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/primary"
+        app:title="کاوشگر ماهواره هواوی (Pura 70)"
+        app:titleTextColor="@color/on_primary" />
+
+    <!-- Tabs -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface"
+        app:tabIndicatorColor="@color/primary"
+        app:tabSelectedTextColor="@color/primary"
+        app:tabTextColor="@color/text_secondary"
+        app:tabMode="fixed" />
+
+    <!-- Container for dynamic tabs content -->
+    <FrameLayout
+        android:id="@+id/contentFrame"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp">
+
+        <!-- Tab 1: Diagnostic View -->
+        <ScrollView
+            android:id="@+id/viewDiagnostic"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRunDiagnostic"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/btn_run_diagnostic"
+                    app:icon="@android:drawable/ic_menu_search"
+                    android:layout_marginBottom="12dp" />
+
+                <LinearLayout
+                    android:id="@+id/containerDiagnosticResults"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Tab 2: Service View -->
+        <ScrollView
+            android:id="@+id/viewService"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="2dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="کنترل اتصال به SmcService"
+                            android:textStyle="bold"
+                            android:textColor="@color/primary"
+                            android:textSize="16sp" />
+
+                        <EditText
+                            android:id="@+id/etTargetPackage"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="com.huawei.lbs"
+                            android:hint="نام پکیج میزبان سرویس (پیش‌فرض com.huawei.lbs)"
+                            android:textSize="14sp"
+                            android:layout_marginTop="8dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="8dp">
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnBindService"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="اتصال به سرویس"
+                                android:layout_marginEnd="4dp" />
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnUnbindService"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                                android:text="قطع اتصال"
+                                android:layout_marginStart="4dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Actions card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="2dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="عملیات و استعلام ماهواره"
+                            android:textStyle="bold"
+                            android:textColor="@color/primary"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnQueryCapabilities"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/btn_query_cap"
+                            android:layout_marginTop="8dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnStartSatellite"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/btn_start_satellite"
+                            android:backgroundTint="@color/secondary"
+                            android:layout_marginTop="4dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnStopSatellite"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:text="@string/btn_stop_satellite"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Tab 3: Transmitter View -->
+        <ScrollView
+            android:id="@+id/viewTransmitter"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="2dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="تنظیم پیام ماهواره‌ای"
+                            android:textStyle="bold"
+                            android:textColor="@color/primary"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/msg_mode_label"
+                            android:textSize="12sp"
+                            android:layout_marginTop="8dp" />
+                        <Spinner
+                            android:id="@+id/spSendMode"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/template_label"
+                            android:textSize="12sp"
+                            android:layout_marginTop="8dp" />
+                        <Spinner
+                            android:id="@+id/spTemplate"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etCustomText"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="@string/custom_text_hint"
+                                android:maxLength="20" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etRecipient"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="@string/recipient_hint"
+                                android:inputType="phone" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginTop="8dp">
+                            <TextView
+                                android:id="@+id/tvGpsCoords"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="GPS: 35.6892, 51.3890"
+                                android:textSize="12sp" />
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnFetchGps"
+                                style="@style/Widget.MaterialComponents.Button.TextButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/fetch_gps" />
+                        </LinearLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnSendSatellite"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/btn_send_satellite"
+                            android:backgroundTint="@color/status_red"
+                            android:layout_marginTop="16dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Tab 4: Launcher & ADB -->
+        <ScrollView
+            android:id="@+id/viewLauncher"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="2dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="اجرای مستقیم صفحات مخفی ماهواره در MeeTime"
+                            android:textStyle="bold"
+                            android:textColor="@color/primary"
+                            android:textSize="16sp" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="این دکمه‌ها اینتنت‌های مستقیم به بخش‌های ماهواره‌ای میتایم ارسال می‌کنند:"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_secondary"
+                            android:layout_marginTop="4dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnLaunchChat"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="صفحه چت ماهواره‌ای (SmcMessageChatActivity)"
+                            android:layout_marginTop="8dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnLaunchSearchSate"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="صفحه رادار و جستجوی ماهواره (Search Satellite)"
+                            android:layout_marginTop="4dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnLaunchQuickHelp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="صفحه پیام‌های اضطراری (Quick Help)"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ADB Tweaks -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="2dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="دستورات ADB برای فعال‌سازی اجباری فلگ ماهواره"
+                            android:textStyle="bold"
+                            android:textColor="@color/primary"
+                            android:textSize="16sp" />
+                        <TextView
+                            android:id="@+id/tvAdbCommands"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textIsSelectable="true"
+                            android:fontFamily="monospace"
+                            android:background="#E0E0E0"
+                            android:padding="8dp"
+                            android:textSize="11sp"
+                            android:layout_marginTop="8dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+
+    <!-- Bottom Log Monitor Console -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="140dp"
+        android:background="@color/log_bg"
+        android:orientation="vertical"
+        android:padding="6dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="کنسول زنده لاگ و وضعیت (RSMC Bridge Console)"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:textSize="11sp" />
+            <TextView
+                android:id="@+id/btnClearLog"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="پاک کردن"
+                android:textColor="#90CAF9"
+                android:textSize="11sp"
+                android:padding="4dp" />
+        </LinearLayout>
+
+        <ScrollView
+            android:id="@+id/scrollLog"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="4dp">
+            <TextView
+                android:id="@+id/tvLogOutput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textColor="@color/log_text"
+                android:textSize="11sp"
+                android:text="برنامه آماده به کار است. یک عملیات انتخاب کنید...\n" />
+        </ScrollView>
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,54 @@
+name: Build Huawei Satellite Explorer APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug --stacktrace
+
+    - name: Upload Debug APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: HuaweiSatelliteExplorer-debug
+        path: app/build/outputs/apk/debug/*.apk
+
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      with:
+        tag_name: v1.0.0-${{ github.run_number }}
+        name: Huawei Satellite Explorer v1.0.0 (Build ${{ github.run_number }})
+        body: |
+          Huawei Satellite Diagnostic & Communication Explorer for Pura 70 / EMUI 14.2.
+          
+          Features:
+          - Deep Hardware, Modem & Baseband Audit
+          - RSMC Satellite Service Discovery & Direct Binding
+          - Satellite Message Transmitter (Quick help, custom text, GPS)
+          - Hidden MeeTime Satellite Activity Launcher
+        draft: false
+        prerelease: false
+        files: app/build/outputs/apk/debug/*.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

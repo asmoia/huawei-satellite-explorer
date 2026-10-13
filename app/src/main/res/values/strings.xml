@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Huawei Satellite Explorer</string>
+    <string name="tab_diagnostic">تست سخت‌افزار</string>
+    <string name="tab_service">سرویس RSMC</string>
+    <string name="tab_transmitter">ارسال پیام</string>
+    <string name="tab_launcher">ابزارها و ADB</string>
+
+    <string name="btn_run_diagnostic">اجرای اسکن جامع سخت‌افزار و سیستم</string>
+    <string name="btn_bind_service">اتصال به سرویس ماهواره (com.huawei.lbs)</string>
+    <string name="btn_start_satellite">فعال‌سازی ماژول ماهواره (startSmcService)</string>
+    <string name="btn_stop_satellite">توقف ماژول ماهواره (stopSmcService)</string>
+    <string name="btn_query_cap">استعلام قابلیت‌های سیستم و مودم</string>
+    <string name="btn_send_satellite">ارسال پکت آزمایشی به ماهواره</string>
+
+    <string name="msg_mode_label">حالت ارسال پیام:</string>
+    <string name="template_label">قالب پیام اضطراری:</string>
+    <string name="location_label">موقعیت مکانی (GPS):</string>
+    <string name="fetch_gps">دریافت مختصات فعلی GPS</string>
+    <string name="custom_text_hint">متن دلخواه (حداکثر ۱۶ الی ۲۰ کاراکتر در شبکه ماهواره)</string>
+    <string name="recipient_hint">شماره همراه گیرنده (مثال: +98912...)</string>
+    <string name="people_count_label">تعداد افراد نیازمند نجات:</string>
+</resources>
