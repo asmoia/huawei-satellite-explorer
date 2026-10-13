@@ -24,7 +24,7 @@
         app:tabIndicatorColor="@color/primary"
         app:tabSelectedTextColor="@color/primary"
         app:tabTextColor="@color/text_secondary"
-        app:tabMode="fixed" />
+        app:tabMode="scrollable" />
 
     <!-- Container for dynamic tabs content -->
     <FrameLayout
@@ -34,11 +34,130 @@
         android:layout_weight="1"
         android:padding="8dp">
 
+        <!-- Tab 0: Sky Radar & 3D Calibration View -->
+        <ScrollView
+            android:id="@+id/viewRadar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Alignment Status Banner Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardRadarStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="3dp"
+                    app:cardBackgroundColor="#1A237E">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+                        <TextView
+                            android:id="@+id/tvRadarStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🛰️ در حال جستجو و کالیبراسیون با ماهواره بیدو..."
+                            android:textColor="#FFFFFF"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/tvRadarGuide"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="گوشی را به سمت جنوب (آزیموت ~۱۷۰°) گرفته و ۴۵ الی ۵۰ درجه رو به آسمان ببرید."
+                            android:textColor="#B0BEC5"
+                            android:textSize="12sp"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Custom Sky Radar Canvas -->
+                <com.huawei.satellite.explorer.view.SkyRadarView
+                    android:id="@+id/skyRadarView"
+                    android:layout_width="match_parent"
+                    android:layout_height="320dp"
+                    android:layout_gravity="center_horizontal" />
+
+                <!-- Telemetry & Sensor Info Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="2dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="تله‌متری سنسورها و مدار بیدو"
+                            android:textStyle="bold"
+                            android:textColor="@color/primary"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:id="@+id/tvGeoTargetInfo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="هدف ثابت: BeiDou GEO-5 (۵۸.۷۵°E) | آزیموت: ۱۶۹.۹° | شیب: ۴۷.۸°"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_primary"
+                            android:layout_marginTop="6dp" />
+
+                        <TextView
+                            android:id="@+id/tvOrientationInfo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="جهت فعلی گوشی: آزیموت ۰° | زاویه ارتفاع ۰° | فاصله تا تراز: ---"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_secondary"
+                            android:layout_marginTop="4dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="8dp">
+                            <TextView
+                                android:id="@+id/tvBdsCount"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="ماهواره بیدو فعال: ۰"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/secondary" />
+                            <TextView
+                                android:id="@+id/tvMaxSnr"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="حداکثر سیگنال: ۰ dB"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:textColor="#2E7D32" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+
         <!-- Tab 1: Diagnostic View -->
         <ScrollView
             android:id="@+id/viewDiagnostic"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            android:visibility="gone">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -206,22 +325,28 @@
                             android:layout_height="wrap_content"
                             android:text="@string/msg_mode_label"
                             android:textSize="12sp"
+                            android:textColor="@color/text_secondary"
                             android:layout_marginTop="8dp" />
+
                         <Spinner
                             android:id="@+id/spSendMode"
                             android:layout_width="match_parent"
-                            android:layout_height="48dp" />
+                            android:layout_height="48dp"
+                            android:layout_marginTop="4dp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/template_label"
                             android:textSize="12sp"
+                            android:textColor="@color/text_secondary"
                             android:layout_marginTop="8dp" />
+
                         <Spinner
                             android:id="@+id/spTemplate"
                             android:layout_width="match_parent"
-                            android:layout_height="48dp" />
+                            android:layout_height="48dp"
+                            android:layout_marginTop="4dp" />
 
                         <com.google.android.material.textfield.TextInputLayout
                             android:layout_width="match_parent"
@@ -378,7 +503,7 @@
     <!-- Bottom Log Monitor Console -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="140dp"
+        android:layout_height="130dp"
         android:background="@color/log_bg"
         android:orientation="vertical"
         android:padding="6dp">
@@ -392,7 +517,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="کنسول زنده لاگ و وضعیت (RSMC Bridge Console)"
+                android:text="کنسول زنده ماهواره هواوی"
                 android:textColor="#FFFFFF"
                 android:textStyle="bold"
                 android:textSize="11sp" />

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Huawei Satellite Explorer</string>
+    <string name="tab_radar">رادار آسمان و کالیبراسیون</string>
     <string name="tab_diagnostic">تست سخت‌افزار</string>
     <string name="tab_service">سرویس RSMC</string>
     <string name="tab_transmitter">ارسال پیام</string>
