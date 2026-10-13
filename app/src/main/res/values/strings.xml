@@ -1,28 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Satellite Communication</string>
-    <string name="title_satellite_align">Satellite Alignment</string>
-    <string name="subtitle_searching">Connecting to Satellite...</string>
-    <string name="subtitle_connected">Satellite Connected</string>
+    <string name="app_name">Satellite Finder &amp; Pointer</string>
 
-    <!-- Tabs in English -->
+    <!-- Tabs -->
     <string name="tab_align">Alignment</string>
-    <string name="tab_message">Satellite SMS</string>
-    <string name="tab_rsmc">RSMC Service</string>
-    <string name="tab_hardware">Hardware &amp; HAL</string>
+    <string name="tab_radar">Live GNSS</string>
+    <string name="tab_channels">TV Satellites</string>
+    <string name="tab_tools">Diagnostics</string>
 
     <string name="btn_run_diagnostic">Run Full Hardware Audit</string>
     <string name="btn_bind_service">Connect to SmcService</string>
-    <string name="btn_start_satellite">Start Satellite Module (startSmcService)</string>
-    <string name="btn_stop_satellite">Stop Satellite Module (stopSmcService)</string>
+    <string name="btn_start_satellite">Start Satellite Module</string>
+    <string name="btn_stop_satellite">Stop Satellite Module</string>
     <string name="btn_query_cap">Query System &amp; Modem Capabilities</string>
-    <string name="btn_send_satellite">Send Satellite Message</string>
-
-    <string name="msg_mode_label">Message Type:</string>
-    <string name="template_label">Emergency Preset Template:</string>
-    <string name="location_label">GPS Coordinates:</string>
-    <string name="fetch_gps">Refresh Current GPS</string>
-    <string name="custom_text_hint">Message text (max 20 characters via satellite)</string>
-    <string name="recipient_hint">Recipient phone number (+98...)</string>
-    <string name="people_count_label">Number of people in emergency:</string>
 </resources>

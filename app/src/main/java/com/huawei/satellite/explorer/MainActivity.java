@@ -21,7 +21,6 @@ import android.os.Vibrator;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
@@ -36,11 +35,11 @@ import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.tabs.TabLayout;
 import com.huawei.satellite.explorer.diagnostic.HardwareDiagnostic;
 import com.huawei.satellite.explorer.model.GnssSatInfo;
-import com.huawei.satellite.explorer.model.SatelliteTemplate;
-import com.huawei.satellite.explorer.model.SmcContentType;
-import com.huawei.satellite.explorer.model.SmcMessagePacket;
+import com.huawei.satellite.explorer.model.SatelliteMath;
+import com.huawei.satellite.explorer.model.SatelliteTarget;
 import com.huawei.satellite.explorer.service.RsmcServiceBridge;
-import com.huawei.satellite.explorer.view.MeeTimeSatelliteRadarView;
+import com.huawei.satellite.explorer.view.GnssSkyView;
+import com.huawei.satellite.explorer.view.HuaweiCinematicAlignmentView;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -51,23 +50,23 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity implements RsmcServiceBridge.BridgeListener, SensorEventListener {
 
     private TabLayout tabLayout;
-    private View viewAlign, viewTransmitter, viewService, viewDiagnostic;
-    private LinearLayout containerDiagnosticResults;
+    private View viewAlign, viewGnss, viewChannels, viewTools;
+    private LinearLayout containerDiagnosticResults, containerSatCatalog;
     private TextView tvLogOutput;
     private ScrollView scrollLog;
 
-    // MeeTime Alignment UI
-    private MeeTimeSatelliteRadarView meeTimeRadarView;
-    private MaterialCardView cardMeeTimeStatus;
-    private TextView tvSignalIcon, tvMeeTimeTitle, tvLockBadge, tvMeeTimeInstruction;
-    private TextView tvTargetSatDetails, tvPhoneAttitude, tvTrackedBdsCount, tvPeakSignal;
+    // Alignment UI (Huawei Cinematic Screen)
+    private Spinner spSatellites;
+    private TextView tvAzimuthValue, tvElevationValue, tvSkewValue;
+    private HuaweiCinematicAlignmentView cinematicAlignmentView;
+    private MaterialCardView cardAlignmentStatus;
+    private TextView tvAlignmentInstruction, tvLiveAttitude;
 
-    // Transmitter UI
-    private EditText etTargetPackage, etCustomText, etRecipient;
-    private Spinner spSendMode, spTemplate;
-    private TextView tvGpsCoords;
+    // GNSS Sky Dome UI
+    private GnssSkyView gnssSkyView;
+    private TextView tvBdsStats, tvGpsStats, tvGlonassStats, tvGalileoStats, tvGnssSignalQuality;
 
-    // Hardware & Sensors
+    // Sensors & Location
     private SensorManager sensorManager;
     private Sensor rotationVectorSensor;
     private LocationManager locationManager;
@@ -75,11 +74,11 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
     private Vibrator vibrator;
 
     private RsmcServiceBridge mBridge;
-    private double currentLat = 35.6892;
+    private double currentLat = 35.6892; // Default Tehran
     private double currentLon = 51.3890;
-    private float targetAzimuth = 169.9f;
-    private float targetElevation = 47.8f;
-    private boolean lastLockedState = false;
+    private SatelliteTarget selectedSatellite;
+    private List<SatelliteTarget> satelliteList;
+    private boolean lastLocked = false;
 
     private final float[] rotationMatrix = new float[9];
     private final float[] orientationAngles = new float[3];
@@ -95,95 +94,70 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
             vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         } catch (Exception ignored) {}
 
+        satelliteList = SatelliteTarget.getPresetSatellites();
+        selectedSatellite = satelliteList.get(0); // Default Yahsat 1A
+
         initViews();
         setupTabs();
-        setupTransmitterUI();
+        setupSatelliteSpinner();
+        setupCatalogUI();
         initSensorsAndGnss();
         requestAppPermissions();
 
-        // Run hardware audit in background
+        // Run hardware audit
         runDiagnostic();
-    }
-
-    private void checkSecureSettingsPermission() {
-        try {
-            int perm = checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS);
-            if (perm != PackageManager.PERMISSION_GRANTED) {
-                log("[WARN] WRITE_SECURE_SETTINGS not granted. Run: adb shell pm grant " + getPackageName() + " android.permission.WRITE_SECURE_SETTINGS");
-            } else {
-                log("[OK] WRITE_SECURE_SETTINGS permission granted.");
-            }
-        } catch (Exception ignored) {}
     }
 
     private void initViews() {
         tabLayout = findViewById(R.id.tabLayout);
         viewAlign = findViewById(R.id.viewAlign);
-        viewTransmitter = findViewById(R.id.viewTransmitter);
-        viewService = findViewById(R.id.viewService);
-        viewDiagnostic = findViewById(R.id.viewDiagnostic);
+        viewGnss = findViewById(R.id.viewGnss);
+        viewChannels = findViewById(R.id.viewChannels);
+        viewTools = findViewById(R.id.viewTools);
 
-        // MeeTime Alignment views
-        meeTimeRadarView = findViewById(R.id.meeTimeRadarView);
-        cardMeeTimeStatus = findViewById(R.id.cardMeeTimeStatus);
-        tvSignalIcon = findViewById(R.id.tvSignalIcon);
-        tvMeeTimeTitle = findViewById(R.id.tvMeeTimeTitle);
-        tvLockBadge = findViewById(R.id.tvLockBadge);
-        tvMeeTimeInstruction = findViewById(R.id.tvMeeTimeInstruction);
-        tvTargetSatDetails = findViewById(R.id.tvTargetSatDetails);
-        tvPhoneAttitude = findViewById(R.id.tvPhoneAttitude);
-        tvTrackedBdsCount = findViewById(R.id.tvTrackedBdsCount);
-        tvPeakSignal = findViewById(R.id.tvPeakSignal);
+        // Alignment Views
+        spSatellites = findViewById(R.id.spSatellites);
+        tvAzimuthValue = findViewById(R.id.tvAzimuthValue);
+        tvElevationValue = findViewById(R.id.tvElevationValue);
+        tvSkewValue = findViewById(R.id.tvSkewValue);
+        cinematicAlignmentView = findViewById(R.id.cinematicAlignmentView);
+        cardAlignmentStatus = findViewById(R.id.cardAlignmentStatus);
+        tvAlignmentInstruction = findViewById(R.id.tvAlignmentInstruction);
+        tvLiveAttitude = findViewById(R.id.tvLiveAttitude);
 
-        meeTimeRadarView.setStatusListener((isLocked, offsetDegrees, instructionEn) -> runOnUiThread(() -> {
-            tvMeeTimeInstruction.setText(instructionEn);
-
-            if (isLocked != lastLockedState) {
-                lastLockedState = isLocked;
+        cinematicAlignmentView.setAlignmentListener((isLocked, offsetDegrees) -> runOnUiThread(() -> {
+            if (isLocked != lastLocked) {
+                lastLocked = isLocked;
                 if (isLocked) {
-                    cardMeeTimeStatus.setCardBackgroundColor(Color.parseColor("#0A2818"));
-                    tvSignalIcon.setText("📶");
-                    tvMeeTimeTitle.setText("Satellite Connected");
-                    tvLockBadge.setText("CONNECTED");
-                    tvLockBadge.setTextColor(Color.parseColor("#00E676"));
-                    tvLockBadge.setBackgroundColor(Color.parseColor("#2200E676"));
+                    cardAlignmentStatus.setCardBackgroundColor(Color.parseColor("#064E3B")); // Emerald Green
+                    tvAlignmentInstruction.setText("🎯 SIGNAL LOCKED (100% Alignment)! Keep phone steady.");
                     triggerHaptic();
-                    log("[MeeTime] Satellite link locked (Offset: " + String.format(Locale.US, "%.1f°", offsetDegrees) + ")");
+                    log("[LOCKED] Perfect alignment with " + selectedSatellite.name + " (Offset: " + String.format(Locale.US, "%.1f°", offsetDegrees) + ")");
                 } else {
-                    cardMeeTimeStatus.setCardBackgroundColor(Color.parseColor("#10192D"));
-                    tvSignalIcon.setText("🛰️");
-                    tvMeeTimeTitle.setText("Search for Satellite");
-                    tvLockBadge.setText("SEARCHING");
-                    tvLockBadge.setTextColor(Color.parseColor("#FFB300"));
-                    tvLockBadge.setBackgroundColor(Color.parseColor("#22FFB300"));
+                    cardAlignmentStatus.setCardBackgroundColor(Color.parseColor("#0F172A")); // Normal Space Blue
+                    tvAlignmentInstruction.setText("Rotate and tilt phone to guide ball into the center target circle.");
                 }
             }
         }));
 
-        findViewById(R.id.btnQuickGoToSend).setOnClickListener(v -> {
-            if (tabLayout != null) {
-                TabLayout.Tab tab = tabLayout.getTabAt(1);
-                if (tab != null) tab.select();
-            }
-        });
+        // GNSS Sky Dome Views
+        gnssSkyView = findViewById(R.id.gnssSkyView);
+        tvBdsStats = findViewById(R.id.tvBdsStats);
+        tvGpsStats = findViewById(R.id.tvGpsStats);
+        tvGlonassStats = findViewById(R.id.tvGlonassStats);
+        tvGalileoStats = findViewById(R.id.tvGalileoStats);
+        tvGnssSignalQuality = findViewById(R.id.tvGnssSignalQuality);
 
-        // Logs
+        // Catalog & Logs
+        containerSatCatalog = findViewById(R.id.containerSatCatalog);
         containerDiagnosticResults = findViewById(R.id.containerDiagnosticResults);
         tvLogOutput = findViewById(R.id.tvLogOutput);
         scrollLog = findViewById(R.id.scrollLog);
         findViewById(R.id.btnClearLog).setOnClickListener(v -> tvLogOutput.setText(""));
 
-        // Service Tab controls
-        etTargetPackage = findViewById(R.id.etTargetPackage);
+        // Diagnostic Tab Buttons
         findViewById(R.id.btnRunDiagnostic).setOnClickListener(v -> runDiagnostic());
-        findViewById(R.id.btnBindService).setOnClickListener(v -> {
-            checkSecureSettingsPermission();
-            String pkg = etTargetPackage.getText().toString().trim();
-            mBridge.bindSmcService(pkg);
-        });
-        findViewById(R.id.btnUnbindService).setOnClickListener(v -> mBridge.unbind());
-        findViewById(R.id.btnStartSatellite).setOnClickListener(v -> mBridge.startSatelliteService());
-        findViewById(R.id.btnStopSatellite).setOnClickListener(v -> mBridge.stopSatelliteService());
+        findViewById(R.id.btnBindService).setOnClickListener(v -> mBridge.bindSmcService("com.huawei.lbs"));
         findViewById(R.id.btnQueryCapabilities).setOnClickListener(v -> {
             mBridge.querySysCapability();
             mBridge.queryProductCapability();
@@ -192,28 +166,127 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
 
     private void setupTabs() {
         tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_align));
-        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_message));
-        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_rsmc));
-        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_hardware));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_radar));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_channels));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_tools));
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 viewAlign.setVisibility(View.GONE);
-                viewTransmitter.setVisibility(View.GONE);
-                viewService.setVisibility(View.GONE);
-                viewDiagnostic.setVisibility(View.GONE);
+                viewGnss.setVisibility(View.GONE);
+                viewChannels.setVisibility(View.GONE);
+                viewTools.setVisibility(View.GONE);
 
                 switch (tab.getPosition()) {
                     case 0: viewAlign.setVisibility(View.VISIBLE); break;
-                    case 1: viewTransmitter.setVisibility(View.VISIBLE); break;
-                    case 2: viewService.setVisibility(View.VISIBLE); break;
-                    case 3: viewDiagnostic.setVisibility(View.VISIBLE); break;
+                    case 1: viewGnss.setVisibility(View.VISIBLE); break;
+                    case 2: viewChannels.setVisibility(View.VISIBLE); break;
+                    case 3: viewTools.setVisibility(View.VISIBLE); break;
                 }
             }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
             @Override public void onTabReselected(TabLayout.Tab tab) {}
         });
+    }
+
+    private void setupSatelliteSpinner() {
+        ArrayAdapter<SatelliteTarget> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, satelliteList);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spSatellites.setAdapter(adapter);
+
+        spSatellites.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                selectedSatellite = satelliteList.get(position);
+                updateTargetLookAngles();
+                log("[TARGET] Selected satellite: " + selectedSatellite.name + " (" + selectedSatellite.category + ")");
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
+
+    private void updateTargetLookAngles() {
+        if (selectedSatellite == null) return;
+
+        SatelliteMath.DishLookAngles angles = SatelliteMath.calculateLookAngles(
+                currentLat, currentLon, selectedSatellite.orbitalLongitude);
+
+        tvAzimuthValue.setText(String.format(Locale.US, "%.1f°", angles.azimuth));
+        tvElevationValue.setText(String.format(Locale.US, "%.1f°", angles.elevation));
+        tvSkewValue.setText(String.format(Locale.US, "%+.1f°", angles.lnbSkew));
+
+        cinematicAlignmentView.setTargetSatellite(
+                selectedSatellite.name,
+                (float) angles.azimuth,
+                (float) angles.elevation
+        );
+    }
+
+    private void setupCatalogUI() {
+        containerSatCatalog.removeAllViews();
+
+        for (SatelliteTarget sat : satelliteList) {
+            SatelliteMath.DishLookAngles angles = SatelliteMath.calculateLookAngles(
+                    currentLat, currentLon, sat.orbitalLongitude);
+
+            MaterialCardView card = new MaterialCardView(this);
+            card.setRadius(14);
+            card.setCardElevation(2);
+            card.setUseCompatPadding(true);
+            card.setCardBackgroundColor(Color.parseColor("#0F172A"));
+            card.setStrokeColor(Color.parseColor("#1E293B"));
+            card.setStrokeWidth(1);
+
+            LinearLayout layout = new LinearLayout(this);
+            layout.setOrientation(LinearLayout.VERTICAL);
+            layout.setPadding(20, 16, 20, 16);
+
+            TextView tvName = new TextView(this);
+            tvName.setText("🛰️ " + sat.name);
+            tvName.setTextSize(15);
+            tvName.setTextColor(Color.parseColor("#00E5FF"));
+            tvName.setTypeface(null, android.graphics.Typeface.BOLD);
+
+            TextView tvDesc = new TextView(this);
+            tvDesc.setText(sat.description);
+            tvDesc.setTextSize(12);
+            tvDesc.setTextColor(Color.parseColor("#94A3B8"));
+            tvDesc.setPadding(0, 4, 0, 8);
+
+            TextView tvAngles = new TextView(this);
+            tvAngles.setText(String.format(Locale.US, "Dish Azimuth: %.1f°  •  Elevation: %.1f°  •  LNB Skew: %+.1f°",
+                    angles.azimuth, angles.elevation, angles.lnbSkew));
+            tvAngles.setTextSize(12);
+            tvAngles.setTextColor(Color.parseColor("#E2E8F0"));
+            tvAngles.setTypeface(null, android.graphics.Typeface.BOLD);
+
+            TextView tvFreq = new TextView(this);
+            tvFreq.setText("Transponders: " + sat.sampleFrequencies);
+            tvFreq.setTextSize(11);
+            tvFreq.setTextColor(Color.parseColor("#FFD700"));
+            tvFreq.setPadding(0, 4, 0, 0);
+
+            layout.addView(tvName);
+            layout.addView(tvDesc);
+            layout.addView(tvAngles);
+            layout.addView(tvFreq);
+            card.addView(layout);
+
+            card.setOnClickListener(v -> {
+                int idx = satelliteList.indexOf(sat);
+                if (idx >= 0 && spSatellites != null) {
+                    spSatellites.setSelection(idx);
+                    if (tabLayout != null) {
+                        TabLayout.Tab tab = tabLayout.getTabAt(0);
+                        if (tab != null) tab.select();
+                    }
+                }
+            });
+
+            containerSatCatalog.addView(card);
+        }
     }
 
     private void initSensorsAndGnss() {
@@ -226,7 +299,7 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
                 }
             }
             locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-            computeGeoOrbitPosition(currentLat, currentLon);
+            updateTargetLookAngles();
         } catch (Exception e) {
             log("[WARN] Sensor init: " + e.getMessage());
         }
@@ -243,32 +316,40 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
                     @Override
                     public void onSatelliteStatusChanged(@NonNull GnssStatus status) {
                         List<GnssSatInfo> list = new ArrayList<>();
-                        int bdsCount = 0;
-                        float maxSnr = 0f;
+                        int bds = 0, gps = 0, glonass = 0, galileo = 0;
+                        float peakCn0 = 0f;
                         int count = status.getSatelliteCount();
 
                         for (int i = 0; i < count; i++) {
-                            if (status.getConstellationType(i) == GnssStatus.CONSTELLATION_BEIDOU) {
-                                bdsCount++;
-                                float snr = status.getCn0DbHz(i);
-                                if (snr > maxSnr) maxSnr = snr;
-                                list.add(new GnssSatInfo(
-                                        status.getSvid(i),
-                                        status.getAzimuthDegrees(i),
-                                        status.getElevationDegrees(i),
-                                        snr,
-                                        status.usedInFix(i),
-                                        GnssStatus.CONSTELLATION_BEIDOU
-                                ));
-                            }
+                            int type = status.getConstellationType(i);
+                            float snr = status.getCn0DbHz(i);
+                            if (snr > peakCn0) peakCn0 = snr;
+
+                            if (type == GnssStatus.CONSTELLATION_BEIDOU) bds++;
+                            else if (type == GnssStatus.CONSTELLATION_GPS) gps++;
+                            else if (type == GnssStatus.CONSTELLATION_GLONASS) glonass++;
+                            else if (type == GnssStatus.CONSTELLATION_GALILEO) galileo++;
+
+                            list.add(new GnssSatInfo(
+                                    status.getSvid(i),
+                                    status.getAzimuthDegrees(i),
+                                    status.getElevationDegrees(i),
+                                    snr,
+                                    status.usedInFix(i),
+                                    type
+                            ));
                         }
 
-                        final int finalBds = bdsCount;
-                        final float finalSnr = maxSnr;
+                        final int fBds = bds, fGps = gps, fGlo = glonass, fGal = galileo;
+                        final float fPeak = peakCn0;
+
                         runOnUiThread(() -> {
-                            meeTimeRadarView.updateSatellites(list);
-                            tvTrackedBdsCount.setText("Active BDS Satellites: " + finalBds);
-                            tvPeakSignal.setText(String.format(Locale.US, "Peak C/N0: %.1f dB-Hz", finalSnr));
+                            gnssSkyView.setSatellites(list, (float) Math.toDegrees(orientationAngles[0]));
+                            tvBdsStats.setText("● BeiDou: " + fBds);
+                            tvGpsStats.setText("● GPS: " + fGps);
+                            tvGlonassStats.setText("● GLONASS: " + fGlo);
+                            tvGalileoStats.setText("● Galileo: " + fGal);
+                            tvGnssSignalQuality.setText(String.format(Locale.US, "Peak Signal: %.1f dB-Hz (%d Sats Tracked)", fPeak, count));
                         });
                     }
                 };
@@ -280,41 +361,14 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
                     public void onLocationChanged(@NonNull Location loc) {
                         currentLat = loc.getLatitude();
                         currentLon = loc.getLongitude();
-                        computeGeoOrbitPosition(currentLat, currentLon);
-                        tvGpsCoords.setText(String.format(Locale.US, "GPS: %.5f, %.5f", currentLat, currentLon));
+                        updateTargetLookAngles();
+                        setupCatalogUI();
                     }
                 });
             }
         } catch (Exception e) {
-            log("[WARN] GNSS start: " + e.getMessage());
+            log("[WARN] GNSS Tracking: " + e.getMessage());
         }
-    }
-
-    /**
-     * Exact Huawei MeeTime Clarke Belt Geostationary Orbit Calculation for BeiDou-3 GEO-5 (58.75°E)
-     */
-    private void computeGeoOrbitPosition(double lat, double lon) {
-        double Re = 6378.137;  // Earth equatorial radius (km)
-        double Rs = 42164.137; // Geostationary orbital radius (km)
-        double satLon = 58.75; // BeiDou-3 GEO-5 orbital position (covers Middle East & Iran)
-
-        double phi = Math.toRadians(lat);
-        double deltaLam = Math.toRadians(satLon - lon);
-
-        // Azimuth formula
-        double az = Math.toDegrees(Math.atan2(Math.sin(deltaLam), Math.tan(phi)));
-        targetAzimuth = (float) ((180.0 - az) % 360.0);
-        if (targetAzimuth < 0) targetAzimuth += 360.0f;
-
-        // Elevation formula
-        double cosGamma = Math.cos(phi) * Math.cos(deltaLam);
-        cosGamma = Math.max(-1.0, Math.min(1.0, cosGamma));
-        double sinGamma = Math.sqrt(Math.max(0.0, 1.0 - cosGamma * cosGamma));
-        targetElevation = (float) Math.toDegrees(Math.atan((cosGamma - (Re / Rs)) / (sinGamma > 0 ? sinGamma : 0.0001)));
-
-        meeTimeRadarView.setSatelliteTarget(targetAzimuth, targetElevation);
-        tvTargetSatDetails.setText(String.format(Locale.US,
-                "Target: BDS GEO-5 (58.75°E)\nAz: %.1f° • El: %.1f°", targetAzimuth, targetElevation));
     }
 
     @Override
@@ -324,20 +378,19 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
                 SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
                 SensorManager.getOrientation(rotationMatrix, orientationAngles);
 
-                // Compass Heading: 0 to 360
                 float heading = (float) Math.toDegrees(orientationAngles[0]);
                 if (heading < 0) heading += 360f;
 
-                // Pitch angle: phone tilt relative to ground
                 float pitch = (float) -Math.toDegrees(orientationAngles[1]);
                 if (pitch < 0) pitch = 0f;
                 if (pitch > 90f) pitch = 90f;
 
-                meeTimeRadarView.setPhoneOrientation(heading, pitch);
+                cinematicAlignmentView.setPhoneAttitude(heading, pitch);
 
-                float offset = meeTimeRadarView.getOffsetDegrees();
-                tvPhoneAttitude.setText(String.format(Locale.US,
-                        "Heading: %.0f° • Pitch: %.0f°\nOffset: %.1f°", heading, pitch, offset));
+                float offset = cinematicAlignmentView.getOffsetDegrees();
+                tvLiveAttitude.setText(String.format(Locale.US,
+                        "Phone Heading: %.0f° | Pitch: %.0f° | Offset Error: %.1f°",
+                        heading, pitch, offset));
             }
         } catch (Exception ignored) {}
     }
@@ -349,9 +402,9 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
         try {
             if (vibrator != null && vibrator.hasVibrator()) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    vibrator.vibrate(VibrationEffect.createOneShot(180, VibrationEffect.DEFAULT_AMPLITUDE));
+                    vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE));
                 } else {
-                    vibrator.vibrate(180);
+                    vibrator.vibrate(200);
                 }
             }
         } catch (Exception ignored) {}
@@ -360,7 +413,7 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
     private void runDiagnostic() {
         try {
             containerDiagnosticResults.removeAllViews();
-            log("[DIAG] Starting full Hardware and Baseband inspection...");
+            log("[DIAG] Auditing system & modem hardware...");
 
             List<HardwareDiagnostic.DiagnosticItem> items = HardwareDiagnostic.runDiagnostic(this);
             for (HardwareDiagnostic.DiagnosticItem item : items) {
@@ -368,16 +421,16 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
                 card.setRadius(14);
                 card.setCardElevation(2);
                 card.setUseCompatPadding(true);
-                card.setCardBackgroundColor(Color.parseColor("#10192D"));
+                card.setCardBackgroundColor(Color.parseColor("#0F172A"));
 
                 LinearLayout layout = new LinearLayout(this);
                 layout.setOrientation(LinearLayout.VERTICAL);
-                layout.setPadding(24, 18, 24, 18);
+                layout.setPadding(20, 16, 20, 16);
 
                 TextView tvTitle = new TextView(this);
                 tvTitle.setText(item.title);
                 tvTitle.setTextSize(13);
-                tvTitle.setTextColor(Color.parseColor("#E0E6ED"));
+                tvTitle.setTextColor(Color.parseColor("#E2E8F0"));
                 tvTitle.setTypeface(null, android.graphics.Typeface.BOLD);
 
                 TextView tvVal = new TextView(this);
@@ -389,87 +442,13 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
                 TextView tvNote = new TextView(this);
                 tvNote.setText(item.note);
                 tvNote.setTextSize(11);
-                tvNote.setTextColor(Color.parseColor("#8A9BB0"));
+                tvNote.setTextColor(Color.parseColor("#94A3B8"));
 
                 layout.addView(tvTitle);
                 layout.addView(tvVal);
                 layout.addView(tvNote);
                 card.addView(layout);
                 containerDiagnosticResults.addView(card);
-            }
-        } catch (Exception ignored) {}
-    }
-
-    private void setupTransmitterUI() {
-        spSendMode = findViewById(R.id.spSendMode);
-        spTemplate = findViewById(R.id.spTemplate);
-        etCustomText = findViewById(R.id.etCustomText);
-        etRecipient = findViewById(R.id.etRecipient);
-        tvGpsCoords = findViewById(R.id.tvGpsCoords);
-
-        ArrayAdapter<SmcContentType> modeAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, SmcContentType.values());
-        modeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spSendMode.setAdapter(modeAdapter);
-
-        List<SatelliteTemplate> templates = SatelliteTemplate.getDefaultTemplates();
-        ArrayAdapter<SatelliteTemplate> templateAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, templates);
-        templateAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spTemplate.setAdapter(templateAdapter);
-
-        spTemplate.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                SatelliteTemplate t = templates.get(position);
-                etCustomText.setText(t.getTitleEn());
-            }
-            @Override public void onNothingSelected(AdapterView<?> parent) {}
-        });
-
-        findViewById(R.id.btnFetchGps).setOnClickListener(v -> fetchLocation());
-
-        findViewById(R.id.btnSendSatellite).setOnClickListener(v -> {
-            SmcContentType selectedMode = (SmcContentType) spSendMode.getSelectedItem();
-            SatelliteTemplate selectedTemplate = (SatelliteTemplate) spTemplate.getSelectedItem();
-
-            SmcMessagePacket packet = new SmcMessagePacket();
-            packet.sendMode = selectedMode;
-            packet.toPhoneNumber = etRecipient.getText().toString().trim();
-            packet.inputContent = etCustomText.getText().toString().trim();
-            packet.msgContent = selectedTemplate != null ? selectedTemplate.getContentEn() : packet.inputContent;
-            packet.sendTemplateCode = selectedTemplate != null ? selectedTemplate.getId() : 0;
-            packet.latitude = currentLat;
-            packet.longitude = currentLon;
-            packet.isCarryLocation = true;
-            packet.peopleNumNeedHelp = 1;
-
-            log("[RSMC] Transmitting packet to SmcService...");
-            int code = mBridge.sendSatelliteMessage(packet);
-            Toast.makeText(this, "Send Result: " + code, Toast.LENGTH_SHORT).show();
-        });
-    }
-
-    private void fetchLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 101);
-            return;
-        }
-        try {
-            if (locationManager != null) {
-                Location loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                if (loc == null) {
-                    loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                }
-                if (loc != null) {
-                    currentLat = loc.getLatitude();
-                    currentLon = loc.getLongitude();
-                    computeGeoOrbitPosition(currentLat, currentLon);
-                    tvGpsCoords.setText(String.format(Locale.US, "GPS: %.5f, %.5f", currentLat, currentLon));
-                    log(String.format(Locale.US, "[GPS] Lat: %.5f, Lon: %.5f", currentLat, currentLon));
-                } else {
-                    Toast.makeText(this, "Using default coordinates", Toast.LENGTH_SHORT).show();
-                }
             }
         } catch (Exception ignored) {}
     }
@@ -529,8 +508,8 @@ public class MainActivity extends AppCompatActivity implements RsmcServiceBridge
     }
 
     // BridgeListener callbacks
-    @Override public void onServiceConnected() { log("[RSMC Bridge] Connected to SmcService."); }
-    @Override public void onServiceDisconnected() { log("[RSMC Bridge] Disconnected from SmcService."); }
+    @Override public void onServiceConnected() { log("[RSMC] Connected to SmcService."); }
+    @Override public void onServiceDisconnected() { log("[RSMC] Disconnected from SmcService."); }
     @Override public void onLog(String message) { log(message); }
     @Override public void onSatelliteInfo(Bundle bundle) { log("[Signal] " + RsmcServiceBridge.bundleToString(bundle)); }
     @Override public void onSendStatus(Bundle bundle) { log("[Send Status] " + RsmcServiceBridge.bundleToString(bundle)); }
